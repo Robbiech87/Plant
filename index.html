@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#141518">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Plant Coord">
+<meta name="mobile-web-app-capable" content="yes">
+<title>SZC Plant Coordinator</title>
+<style>
+:root{
+  --bg:#141518; --panel:#1c1e23; --panel2:#23262c; --line:#33373f;
+  --ink:#f2f0ea; --ink-dim:#9aa0aa; --ink-faint:#6b7078;
+  --hi:#ffb200;            /* hi-vis amber - signature */
+  --hi-ink:#141518;
+  --go:#3fae5a; --caution:#f5a623; --stop:#e2483d;
+  --go-bg:#16301f; --caution-bg:#332714; --stop-bg:#331815;
+  --steel:#4a86c4;
+  --mono:'Roboto Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  --sans:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --r:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.4}
+body{padding-bottom:88px;overflow-x:hidden}
+h1,h2,h3{font-weight:700;letter-spacing:-.01em}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:15px}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+
+/* ---- top bar ---- */
+.top{position:sticky;top:0;z-index:40;background:linear-gradient(180deg,#191b1f,#141518);
+  border-bottom:1px solid var(--line);padding:env(safe-area-inset-top) 0 0}
+.top-in{display:flex;align-items:center;gap:12px;padding:12px 16px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.chevrons{width:22px;height:22px;flex:none}
+.brand h1{font-size:16px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand .sub{font-size:10.5px;color:var(--ink-faint);letter-spacing:.14em;text-transform:uppercase;font-weight:600}
+.date-pill{margin-left:auto;font-family:var(--mono);font-size:12.5px;color:var(--hi);
+  background:#231f14;border:1px solid #3a3115;padding:6px 10px;border-radius:8px;white-space:nowrap;font-weight:600}
+
+/* ---- day banner ---- */
+.daybar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--panel);
+  border-bottom:1px solid var(--line);font-size:13px;flex-wrap:wrap}
+.daybar .grp{display:flex;align-items:center;gap:7px}
+.daybar label{color:var(--ink-dim);font-weight:600;font-size:12px}
+.seg{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{padding:6px 12px;font-size:12.5px;font-weight:600;color:var(--ink-dim)}
+.seg button.on{background:var(--hi);color:var(--hi-ink)}
+
+/* ---- KPI strip ---- */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:14px 16px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:11px 12px;position:relative;overflow:hidden}
+.kpi .n{font-family:var(--mono);font-size:23px;font-weight:700;line-height:1}
+.kpi .l{font-size:10.5px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.07em;margin-top:5px;font-weight:600}
+.kpi.go .n{color:var(--go)} .kpi.stop .n{color:var(--stop)} .kpi.caution .n{color:var(--caution)}
+.kpi .bar{position:absolute;left:0;top:0;bottom:0;width:3px}
+.kpi.go .bar{background:var(--go)} .kpi.stop .bar{background:var(--stop)}
+.kpi.caution .bar{background:var(--caution)} .kpi.steel .bar{background:var(--steel)}
+
+/* ---- section headings ---- */
+.wrap{padding:0 16px}
+.sec-h{display:flex;align-items:center;gap:10px;margin:20px 2px 12px}
+.sec-h .idx{font-family:var(--mono);font-size:11px;color:var(--hi);font-weight:700;
+  border:1px solid #3a3115;background:#201d13;padding:3px 6px;border-radius:5px}
+.sec-h h2{font-size:14px;text-transform:uppercase;letter-spacing:.09em}
+.sec-h .rule{flex:1;height:1px;background:var(--line)}
+.sec-h .count{font-family:var(--mono);font-size:12px;color:var(--ink-faint)}
+
+/* ---- filter chips ---- */
+.chips{display:flex;gap:7px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{white-space:nowrap;font-size:12.5px;font-weight:600;color:var(--ink-dim);
+  background:var(--panel);border:1px solid var(--line);padding:7px 12px;border-radius:20px}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+/* ---- plant card ---- */
+.cat-h{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-faint);margin:16px 2px 8px;font-weight:600;display:flex;align-items:center;gap:8px}
+.cat-h::after{content:"";flex:1;height:1px;background:var(--line)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);margin-bottom:9px;overflow:hidden;
+  border-left:3px solid var(--line);transition:border-color .15s}
+.card.s-working{border-left-color:var(--go)}
+.card.s-down{border-left-color:var(--stop)}
+.card.s-standby{border-left-color:var(--caution)}
+.card-main{display:flex;align-items:center;gap:12px;padding:12px 13px}
+.plate{font-family:var(--mono);font-weight:700;font-size:14px;letter-spacing:.02em;
+  background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px;white-space:nowrap;min-width:0}
+.plate .t{display:block;font-size:9px;color:var(--hi);letter-spacing:.08em;font-weight:600}
+.who{flex:1;min-width:0}
+.who .op{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who .op.none{color:var(--stop)}
+.who .meta{font-size:11.5px;color:var(--ink-dim);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
+.loc-tag{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:11px;
+  background:var(--panel2);border:1px solid var(--line);padding:2px 7px;border-radius:5px;color:var(--ink)}
+.badges{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+.dot.go{background:var(--go)} .dot.stop{background:var(--stop)} .dot.caution{background:var(--caution)}
+.pill{font-size:10px;font-weight:700;padding:3px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.pill.go{background:var(--go-bg);color:var(--go)}
+.pill.stop{background:var(--stop-bg);color:var(--stop)}
+.pill.caution{background:var(--caution-bg);color:var(--caution)}
+.chev{color:var(--ink-faint);font-size:18px;transition:transform .2s;flex:none}
+.card.open .chev{transform:rotate(90deg)}
+
+/* ---- card expand ---- */
+.card-body{display:none;border-top:1px solid var(--line);padding:13px;background:var(--panel2);gap:13px;flex-direction:column}
+.card.open .card-body{display:flex}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-dim);font-weight:600}
+.field .row{display:flex;gap:8px}
+select,input[type=text],textarea{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--ink);
+  border-radius:8px;padding:10px 11px;font-size:14px}
+select:focus,input:focus,textarea:focus{outline:2px solid var(--hi);outline-offset:-1px;border-color:var(--hi)}
+textarea{resize:vertical;min-height:58px;line-height:1.45}
+.statuses{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.st-btn{padding:11px 6px;border-radius:8px;border:1px solid var(--line);background:var(--bg);
+  font-weight:700;font-size:12.5px;color:var(--ink-dim);display:flex;flex-direction:column;align-items:center;gap:5px}
+.st-btn .dot{width:8px;height:8px}
+.st-btn.on.go{background:var(--go-bg);border-color:var(--go);color:var(--go)}
+.st-btn.on.stop{background:var(--stop-bg);border-color:var(--stop);color:var(--stop)}
+.st-btn.on.caution{background:var(--caution-bg);border-color:var(--caution);color:var(--caution)}
+
+/* compliance block */
+.compliance{border:1px dashed var(--line);border-radius:8px;padding:11px;background:var(--bg)}
+.compliance .ch{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-dim);font-weight:600;margin-bottom:9px;display:flex;align-items:center;gap:7px}
+.check-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line)}
+.check-row:first-of-type{border-top:none}
+.check-row .lbl{flex:1;font-size:13px}
+.check-row .lbl small{display:block;color:var(--ink-faint);font-size:11px;font-family:var(--mono)}
+.toggle{width:46px;height:26px;border-radius:20px;background:var(--line);position:relative;flex:none;transition:background .15s}
+.toggle::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .15s}
+.toggle.on{background:var(--go)} .toggle.on::after{transform:translateX(20px)}
+.datewrap{display:none} .datewrap.show{display:block}
+input[type=date]{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:9px 11px;font-size:13px;font-family:var(--mono)}
+input[type=date].expired{border-color:var(--stop);color:var(--stop)}
+
+/* breakdown block */
+.bd{border:1px solid var(--stop);border-radius:8px;padding:11px;background:var(--stop-bg);display:none;flex-direction:column;gap:9px}
+.bd.show{display:flex}
+.bd .ch{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--stop);font-weight:700;display:flex;align-items:center;gap:7px}
+.tstamp{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;font-size:13px}
+.tstamp .tl{color:var(--ink-dim)}
+.tstamp .tv{font-family:var(--mono);font-size:13px;color:var(--ink);min-width:52px;text-align:right}
+.mini{font-size:11.5px;font-weight:700;padding:7px 10px;border-radius:7px;background:var(--panel2);border:1px solid var(--line);color:var(--ink)}
+.mini:active{background:var(--line)}
+.dur{font-family:var(--mono);font-size:12px;color:var(--caution);text-align:center;padding-top:4px;border-top:1px dashed #5a2a26}
+
+/* ---- FAB / bottom nav ---- */
+.tabbar{position:fixed;bottom:0;left:0;right:0;z-index:45;background:linear-gradient(0deg,#17191d,#1a1c21);
+  border-top:1px solid var(--line);display:flex;padding:8px 8px calc(8px + env(safe-area-inset-bottom));gap:6px}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;border-radius:9px;color:var(--ink-faint)}
+.tab.on{color:var(--hi)} .tab.on .ti{background:#231f14}
+.ti{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:7px}
+.tab .tl{font-size:10px;font-weight:700;letter-spacing:.03em}
+.tab svg{width:20px;height:20px}
+
+/* ---- views ---- */
+.view{display:none} .view.on{display:block}
+
+/* ---- message / report output ---- */
+.out{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);margin:0 0 14px}
+.out-h{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.out-h h3{font-size:13px;text-transform:uppercase;letter-spacing:.07em}
+.out-h .cp{margin-left:auto;background:var(--hi);color:var(--hi-ink);font-weight:700;font-size:12.5px;
+  padding:8px 14px;border-radius:8px;display:flex;align-items:center;gap:6px}
+.out-h .cp:active{transform:scale(.97)}
+.out pre{font-family:var(--mono);font-size:12.5px;line-height:1.6;padding:14px;white-space:pre-wrap;word-break:break-word;color:var(--ink)}
+.hint{font-size:12px;color:var(--ink-faint);padding:0 2px 14px;line-height:1.5}
+
+/* report builder */
+.rep-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:13px;margin-bottom:10px}
+.rep-card .rh{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.rep-card .rh .plate{padding:5px 7px;font-size:12px}
+.rep-card .rh .z{font-family:var(--mono);font-size:11px;color:var(--hi)}
+.big-btn{width:100%;background:var(--hi);color:var(--hi-ink);font-weight:800;font-size:15px;
+  padding:15px;border-radius:11px;letter-spacing:.02em;display:flex;align-items:center;justify-content:center;gap:9px;margin:6px 0 18px}
+.big-btn:active{transform:scale(.99)}
+.big-btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+
+/* empty state */
+.empty{text-align:center;padding:50px 20px;color:var(--ink-faint)}
+.empty svg{width:44px;height:44px;opacity:.4;margin-bottom:12px}
+.empty p{font-size:14px;line-height:1.5}
+
+/* toast */
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--ink);color:var(--bg);font-weight:700;font-size:13.5px;padding:12px 20px;border-radius:24px;
+  opacity:0;pointer-events:none;transition:.25s;z-index:60;box-shadow:0 8px 30px rgba(0,0,0,.5);white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* prototype note */
+.protonote{margin:16px;padding:12px 14px;background:#1a1f26;border:1px solid #2b3542;border-left:3px solid var(--steel);
+  border-radius:9px;font-size:12.5px;color:var(--ink-dim);line-height:1.5}
+.protonote b{color:var(--steel)}
+
+@media(min-width:720px){
+  body{max-width:900px;margin:0 auto;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+  .kpis{grid-template-columns:repeat(4,1fr)}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+
+<body>
+<div class="top">
+  <div class="top-in">
+    <div class="brand">
+      <svg class="chevrons" viewBox="0 0 24 24" fill="none"><path d="M3 8l4-4 4 4M3 14l4-4 4 4M13 8l4-4 4 4M13 14l4-4 4 4" stroke="#ffb200" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div>
+        <h1>Plant Coordinator</h1>
+        <div class="sub">Sizewell C</div>
+      </div>
+    </div>
+    <div class="date-pill" id="datePill">—</div>
+  </div>
+  <div class="daybar">
+    <div class="grp">
+      <label>Weekend group</label>
+      <div class="seg" id="grpSeg">
+        <button data-g="Weekday" class="on">Weekday</button>
+        <button data-g="Group A">A</button>
+        <button data-g="Group B">B</button>
+      </div>
+    </div>
+    <div class="grp" style="margin-left:auto">
+      <label>Shift start</label>
+      <div class="seg" id="shiftSeg">
+        <button data-s="07:00" class="on">07:00</button>
+        <button data-s="06:00">06:00</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ALLOCATE VIEW ============ -->
+<div class="view on" id="v-allocate">
+  <div class="kpis">
+    <div class="kpi go"><div class="bar"></div><div class="n" id="kWork">0</div><div class="l">Working</div></div>
+    <div class="kpi stop"><div class="bar"></div><div class="n" id="kDown">0</div><div class="l">Down</div></div>
+    <div class="kpi caution"><div class="bar"></div><div class="n" id="kUnalloc">0</div><div class="l">No task</div></div>
+    <div class="kpi steel"><div class="bar"></div><div class="n" id="kFlag">0</div><div class="l">Cert due</div></div>
+  </div>
+
+  <div class="wrap">
+    <div class="sec-h">
+      <span class="idx">01</span><h2>Fleet allocation</h2><span class="rule"></span>
+      <span class="count" id="fleetCount"></span>
+    </div>
+    <div class="chips" id="typeChips"></div>
+  </div>
+  <div class="wrap" id="fleetList" style="margin-top:6px"></div>
+</div>
+
+<!-- ============ MESSAGE VIEW ============ -->
+<div class="view" id="v-message">
+  <div class="wrap">
+    <div class="sec-h"><span class="idx">02</span><h2>Morning briefing</h2><span class="rule"></span></div>
+    <div class="out">
+      <div class="out-h">
+        <h3>WhatsApp message</h3>
+        <button class="cp" id="cpMsg">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" stroke-width="2"/><path d="M5 15V5a2 2 0 012-2h10" stroke="currentColor" stroke-width="2"/></svg>
+          Copy
+        </button>
+      </div>
+      <pre id="msgOut"></pre>
+    </div>
+    <p class="hint">Copy this and paste it into the SZC plant WhatsApp group. It rebuilds from your allocations every time you open this tab. Auto-send can come later once there's a business WhatsApp number.</p>
+  </div>
+</div>
+
+<!-- ============ REPORT VIEW ============ -->
+<div class="view" id="v-report">
+  <div class="wrap">
+    <div class="sec-h"><span class="idx">03</span><h2>End of day report</h2><span class="rule"></span></div>
+    <div id="reportBuild"></div>
+    <button class="big-btn" id="genReport">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Create daily report
+    </button>
+    <div class="out" id="reportOutWrap" style="display:none">
+      <div class="out-h">
+        <h3>Daily activity report</h3>
+        <button class="cp" id="cpReport">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" stroke-width="2"/><path d="M5 15V5a2 2 0 012-2h10" stroke="currentColor" stroke-width="2"/></svg>
+          Copy
+        </button>
+      </div>
+      <pre id="reportOut"></pre>
+    </div>
+    <p class="hint">This pulls together what every machine did today — location, task, and any downtime — into a report you can send to the manager. In the full system this posts straight to their dashboard.</p>
+  </div>
+</div>
+
+<!-- ============ SETUP VIEW ============ -->
+<div class="view" id="v-setup">
+  <div class="protonote">
+    <b>Prototype — you're the test dummy.</b> Everything works and saves on this device: allocations, moves, breakdowns, certs, reports. What's not here yet is the multi-user side — manager and supervisor logins syncing across phones. That's the next build, and it needs a server. This trial tells us exactly what that version has to do.
+  </div>
+  <div class="wrap">
+    <div class="sec-h"><span class="idx">04</span><h2>Data & tools</h2><span class="rule"></span></div>
+    <button class="big-btn ghost" id="resetDay">Reset today's tasks</button>
+    <button class="big-btn ghost" id="exportData">Export all data (backup)</button>
+    <button class="big-btn ghost" id="wipeAll" style="border-color:#5a2a26;color:#e2483d">Wipe everything & reload fleet</button>
+    <p class="hint">Data lives in this browser only. "Export" gives you a file you can keep as backup or send me. Add the app to your home screen (Share → Add to Home Screen) to use it like a normal app.</p>
+  </div>
+</div>
+
+<!-- ============ TAB BAR ============ -->
+<nav class="tabbar" id="tabbar">
+  <button class="tab on" data-v="allocate">
+    <span class="ti"><svg viewBox="0 0 24 24" fill="none"><path d="M3 7h18M3 12h18M3 17h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+    <span class="tl">Allocate</span>
+  </button>
+  <button class="tab" data-v="message">
+    <span class="ti"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H8l-4 3V5z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
+    <span class="tl">Briefing</span>
+  </button>
+  <button class="tab" data-v="report">
+    <span class="ti"><svg viewBox="0 0 24 24" fill="none"><path d="M6 3h9l4 4v14H6V3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 12h6M9 16h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+    <span class="tl">Report</span>
+  </button>
+  <button class="tab" data-v="setup">
+    <span class="ti"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+    <span class="tl">Setup</span>
+  </button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ SEED DATA (from CWA plant register) ============ */
+const SEED_PLANT = [{"cat":"180's","type":180,"plant":"3CX48","op":"Leroy Tuitt","loc":"Site Wide"},{"cat":"360 Tracked","type":360,"plant":"EX25TLR11","op":"Gurvinder Singh","loc":"Bentonite Pad"},{"cat":"360 Tracked","type":360,"plant":"EX25TZ124 GPS","op":"Jake Mackenzie","loc":"Crushing Yard"},{"cat":"360 Tracked","type":360,"plant":"EX40T167","op":"Lukas Kowalski","loc":"Crushing Yard"},{"cat":"360 Tracked","type":360,"plant":"EX40T157","op":"Richard Fox","loc":"Northern Mound"},{"cat":"360 Tracked","type":360,"plant":"EX40T151","op":"Gheorghe Miron","loc":"9B"},{"cat":"360 Tracked","type":360,"plant":"EX40T182 GPS","op":"Alan Anderson","loc":"4"},{"cat":"360 Tracked","type":360,"plant":"EX40T183 GPS","op":"James Attrill","loc":"Crushing Yard"},{"cat":"360 Tracked","type":360,"plant":"EX25T379","op":"Stephen Magi","loc":"North of Zone 1"},{"cat":"360 Tracked","type":360,"plant":"EX9T387 GPS","op":"Octavia","loc":"2.2"},{"cat":"360 Tracked","type":360,"plant":"EX987","op":"Timothy Bekett","loc":"Crushing Yard"},{"cat":"360 Tracked","type":360,"plant":"JCB 370","op":"Paulius Simkunas","loc":"Stone Yard"},{"cat":"360 Tracked","type":360,"plant":"EX988","op":"Craig Griffiths","loc":"6"},{"cat":"360 Tracked","type":360,"plant":"EWK593","op":"Damian Suchta","loc":"Crushing Yard"},{"cat":"360 Tracked","type":360,"plant":"EWK535","op":"James Ferry","loc":"9B"},{"cat":"Dozer/Grader","type":"Dozer","plant":"DZ6T135 GPS","op":"Kevin Taylor","loc":"1A"},{"cat":"Dozer/Grader","type":"Dozer","plant":"DZ6T91","op":"Gary Oldroyd","loc":"Northern Mound"},{"cat":"Dozer/Grader","type":"Dozer","plant":"DZ6T131","op":"Girts Platacis","loc":"1A"},{"cat":"Dozer/Grader","type":"Dozer","plant":"DZ6T122 GPS","op":"Gordan Jackson","loc":"2.2"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T150","op":"Darren Nunn","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T176","op":"Mike Hardee","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T180","op":"Rhys Phillips","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T186","op":"Uchenna Odoputa","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T205","op":"Simon Felton","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T207","op":"Paul Lamen","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T211","op":"Curtis Bowles","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T233","op":"Florinel Stuparu","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T234","op":"Nicolae Jitcu","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T235","op":"Mark Cruickshank","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T236","op":"Alex Thurling","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T239","op":"Ion Onica","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T240","op":"Aiden McElroy","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T65","op":"Harjinder Kang","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T70","op":"Brendan Mcelroy","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T75","op":"Shane Lanley","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T76","op":"Kyle Wakeman Brotherhood","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T78","op":"Kenneth Odo","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T79","op":"Dimitrian Arsenii","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T82","op":"John McElroy","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T83","op":"James Ball","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T85","op":"Onka Singh","loc":""},{"cat":"Rollers","type":"Roller","plant":"RO13T99","op":"Nyameke Armah","loc":""},{"cat":"Rollers","type":"Roller","plant":"RO3T121","op":"Kyle Ward","loc":"1A"},{"cat":"Rollers","type":"Roller","plant":"RO13T121","op":"Paul Frith","loc":"Crushing Yard"},{"cat":"Tractor & Bowsers","type":"Tractor","plant":"TK68 DB154","op":"Marius Martinaitis","loc":"4"},{"cat":"Tractor & Bowsers","type":"Tractor","plant":"TK227 DB200 DB52","op":"Phil Owens","loc":"Dust Suppression"},{"cat":"Telehandler","type":"Telehandler","plant":"TH17M57","op":"Jack Meacey","loc":"4"},{"cat":"Telehandler","type":"Telehandler","plant":"TH17M51","op":"Chimezie Okolo","loc":"4"}];
+
+const LOCATIONS = ["Northern Mound","Crushing Yard","Old Crush Yard","Stone Yard","Stone Stockpile","Bentonite Pad","Dust Suppression","Site Wide","North of Zone 1","TCA","Zone 2","Zone 4","Zone 9","1A","1.1","1.2","2.1","2.2","2.3","3A","4","4A","4B","5A","6","6A","6B","9A","9B","SSSI South","MBIF","Stockpile 1"];
+const CATS = ["180's","360 Tracked","Dozer/Grader","Dump Trucks/Hydreamer","Rollers","Tractor & Bowsers","Telehandler"];
+const CAT_LABEL = {"180's":"3CX / 180","360 Tracked":"360 Excavators","Dozer/Grader":"Dozers","Dump Trucks/Hydreamer":"ADTs","Rollers":"Rollers","Tractor & Bowsers":"Tractors & Bowsers","Telehandler":"Telehandlers"};
+const TYPE_TAG = t => ({180:"3CX",360:"360",Dozer:"DOZ",ADT:"ADT",Roller:"ROLL",Tractor:"TRAC",Telehandler:"TELE"}[t]||String(t));
+// excavators need lift plan + LOLER; anything lifting needs LOLER
+const NEEDS_COMPLIANCE = c => c==="360 Tracked" || c==="Telehandler";
+
+/* ============ STATE ============ */
+const LS_KEY = "szc_plant_v1";
+let state = load();
+
+function freshFromSeed(){
+  const rows = SEED_PLANT.map((p,i)=>({
+    id:"P"+i,
+    cat:p.cat, type:p.type, plant:p.plant,
+    operator:p.op||"", homeLoc:p.loc||"",
+    // daily/live fields
+    loc:p.loc||"", task:"", status:"working",
+    downtime:{down:null,fitter:null,up:null},
+    // compliance
+    liftPlan: NEEDS_COMPLIANCE(p.cat)? false : null,
+    liftPlanExp:"",
+    loler: NEEDS_COMPLIANCE(p.cat)? false : null,
+    lolerExp:"",
+    notes:""
+  }));
+  return {plant:rows, group:"Weekday", shift:"07:00", day:todayISO()};
+}
+function load(){
+  try{
+    const s=JSON.parse(localStorage.getItem(LS_KEY));
+    if(s&&s.plant&&s.plant.length){ return migrateDay(s); }
+  }catch(e){}
+  return freshFromSeed();
+}
+function migrateDay(s){
+  // if stored day isn't today, roll tasks over but keep fleet+compliance
+  if(s.day!==todayISO()){
+    s.plant.forEach(p=>{ p.task=""; p.status="working"; p.downtime={down:null,fitter:null,up:null}; });
+    s.day=todayISO();
+  }
+  return s;
+}
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+
+/* ============ HELPERS ============ */
+function todayISO(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function fmtDate(){ const d=new Date(); return d.toLocaleDateString("en-GB",{weekday:"short",day:"2-digit",month:"short"}); }
+function fmtDateFull(){ const d=new Date(); return d.toLocaleDateString("en-GB",{weekday:"long",day:"2-digit",month:"long",year:"numeric"}); }
+function nowHM(){ const d=new Date(); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+function el(tag,cls,html){ const e=document.createElement(tag); if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e; }
+function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1900); }
+function expDaysLeft(iso){ if(!iso)return null; const d=new Date(iso+"T00:00:00"); const now=new Date(); now.setHours(0,0,0,0); return Math.round((d-now)/86400000); }
+function certState(p){
+  // returns 'ok'|'due'|'missing'|'na'
+  if(!NEEDS_COMPLIANCE(p.cat)) return "na";
+  const need=[["liftPlan","liftPlanExp"],["loler","lolerExp"]];
+  let worst="ok";
+  for(const [has,exp] of need){
+    if(!p[has]){ return "missing"; }
+    const dl=expDaysLeft(p[exp]);
+    if(dl===null) worst= worst==="ok"?"due":worst; // has cert but no date = treat as due/attention
+    else if(dl<0) return "missing"; // expired = treat as blocking
+    else if(dl<=14) worst="due";
+  }
+  return worst;
+}
+
+/* ============ RENDER: FLEET ============ */
+let typeFilter="ALL";
+function renderFleet(){
+  const list=document.getElementById("fleetList");
+  list.innerHTML="";
+  const shown = state.plant.filter(p=> typeFilter==="ALL" || p.cat===typeFilter);
+  // group by cat in canonical order
+  let n=0;
+  CATS.forEach(cat=>{
+    const rows=shown.filter(p=>p.cat===cat);
+    if(!rows.length) return;
+    list.appendChild(el("div","cat-h",CAT_LABEL[cat]+" · "+rows.length));
+    rows.forEach(p=>{ list.appendChild(cardFor(p)); n++; });
+  });
+  if(!n){ list.appendChild(el("div","empty",'<p>No plant in this filter.</p>')); }
+  document.getElementById("fleetCount").textContent = state.plant.length+" units";
+  renderKpis();
+}
+
+function cardFor(p){
+  const cs=certState(p);
+  const card=el("div","card s-"+p.status+(p._open?" open":""));
+  card.dataset.id=p.id;
+
+  // ---- main row ----
+  const main=el("div","card-main");
+  const plate=el("div","plate",`<span class="t">${TYPE_TAG(p.type)}</span>${p.plant}`);
+  const who=el("div","who");
+  const opName = p.operator? p.operator : "No operator";
+  who.innerHTML=`<div class="op${p.operator?'':' none'}">${opName}</div>
+    <div class="meta"><span class="loc-tag">📍 ${p.loc||"—"}</span>${p.task?`<span>${p.task.length>28?p.task.slice(0,28)+"…":p.task}</span>`:`<span style="color:var(--caution)">no task set</span>`}</div>`;
+  const badges=el("div","badges");
+  // status pill
+  const stMap={working:["go","Working"],down:["stop","Down"],standby:["caution","Standby"]};
+  const [sc,sl]=stMap[p.status];
+  badges.appendChild(el("span","pill "+sc,sl));
+  // cert dot
+  if(cs!=="na"){
+    const cmap={ok:["go","Certs OK"],due:["caution","Cert due"],missing:["stop","Cert/plan missing"]};
+    const [cc]=cmap[cs];
+    const d=el("span","dot "+cc); d.title=cmap[cs][1]; badges.appendChild(d);
+  }
+  const chev=el("div","chev","›");
+  main.append(plate,who,badges,chev);
+  main.addEventListener("click",()=>{ p._open=!p._open; renderFleet(); });
+  card.appendChild(main);
+
+  // ---- body ----
+  const body=el("div","card-body");
+
+  // status buttons
+  const stField=el("div","field");
+  stField.innerHTML=`<label>Status</label>`;
+  const stWrap=el("div","statuses");
+  [["working","go","Working"],["standby","caution","Standby"],["down","stop","Down"]].forEach(([v,c,l])=>{
+    const b=el("button","st-btn "+c+(p.status===v?" on":""),`<span class="dot ${c}"></span>${l}`);
+    b.addEventListener("click",()=>{
+      p.status=v;
+      if(v==="down" && !p.downtime.down){ p.downtime.down=nowHM(); }
+      save(); renderFleet();
+    });
+    stWrap.appendChild(b);
+  });
+  stField.appendChild(stWrap);
+  body.appendChild(stField);
+
+  // location + task
+  const locField=el("div","field");
+  locField.innerHTML=`<label>Working location</label>`;
+  const sel=el("select");
+  LOCATIONS.forEach(L=>{ const o=el("option",null,L); o.value=L; if(L===p.loc)o.selected=true; sel.appendChild(o); });
+  if(!LOCATIONS.includes(p.loc) && p.loc){ const o=el("option",null,p.loc); o.value=p.loc; o.selected=true; sel.insertBefore(o,sel.firstChild); }
+  sel.addEventListener("change",()=>{ p.loc=sel.value; save(); renderFleet(); });
+  locField.appendChild(sel);
+  body.appendChild(locField);
+
+  const taskField=el("div","field");
+  taskField.innerHTML=`<label>Activity / task</label>`;
+  const ta=el("textarea"); ta.value=p.task; ta.placeholder="e.g. Riddling material to reduce concrete in sand";
+  ta.addEventListener("input",()=>{ p.task=ta.value; });
+  ta.addEventListener("blur",()=>{ save(); renderFleet(); });
+  taskField.appendChild(ta);
+  body.appendChild(taskField);
+
+  // operator
+  const opField=el("div","field");
+  opField.innerHTML=`<label>Operator</label>`;
+  const opIn=el("input"); opIn.type="text"; opIn.value=p.operator; opIn.placeholder="Operator name";
+  opIn.addEventListener("input",()=>{ p.operator=opIn.value; });
+  opIn.addEventListener("blur",()=>{ save(); renderFleet(); });
+  opField.appendChild(opIn);
+  body.appendChild(opField);
+
+  // ---- compliance ----
+  if(NEEDS_COMPLIANCE(p.cat)){
+    const comp=el("div","compliance");
+    comp.innerHTML=`<div class="ch">🛡 Paperwork & certs</div>`;
+    comp.appendChild(complianceRow(p,"Lift plan in place","liftPlan","liftPlanExp"));
+    comp.appendChild(complianceRow(p,"LOLER / thorough exam","loler","lolerExp"));
+    body.appendChild(comp);
+  }
+
+  // ---- breakdown ----
+  const bd=el("div","bd"+(p.status==="down"?" show":""));
+  bd.innerHTML=`<div class="ch">⚠ Breakdown log</div>`;
+  bd.appendChild(tstampRow(p,"Broke down","down"));
+  bd.appendChild(tstampRow(p,"Fitter arrived","fitter"));
+  bd.appendChild(tstampRow(p,"Back operational","up"));
+  const dt=p.downtime;
+  if(dt.down&&dt.up){
+    const mins=diffMin(dt.down,dt.up);
+    bd.appendChild(el("div","dur",`Total downtime: ${Math.floor(mins/60)}h ${mins%60}m`));
+  } else if(dt.fitter&&dt.down){
+    const mins=diffMin(dt.down,dt.fitter);
+    bd.appendChild(el("div","dur",`Waiting on fitter: ${mins} min so far`));
+  }
+  body.appendChild(bd);
+
+  card.appendChild(body);
+  return card;
+}
+
+function complianceRow(p,label,hasKey,expKey){
+  const row=el("div","check-row");
+  const dl=expDaysLeft(p[expKey]);
+  let sub = p[hasKey] ? (p[expKey]? (dl<0?`EXPIRED ${-dl}d ago`:`valid · ${dl}d left`) : "no expiry set") : "not in place";
+  row.innerHTML=`<div class="lbl">${label}<small>${sub}</small></div>`;
+  const tog=el("div","toggle"+(p[hasKey]?" on":""));
+  const dw=el("div","datewrap"+(p[hasKey]?" show":""));
+  const di=el("input"); di.type="date"; di.value=p[expKey]||""; if(dl!==null&&dl<0)di.classList.add("expired");
+  di.addEventListener("change",()=>{ p[expKey]=di.value; save(); renderFleet(); });
+  dw.appendChild(di);
+  tog.addEventListener("click",()=>{ p[hasKey]=!p[hasKey]; if(!p[hasKey])p[expKey]=""; save(); renderFleet(); });
+  const wrap=el("div"); wrap.style.cssText="display:flex;flex-direction:column;gap:8px;align-items:flex-end";
+  wrap.appendChild(tog);
+  row.appendChild(wrap);
+  const outer=el("div"); outer.style.cssText="display:flex;flex-direction:column;gap:8px";
+  outer.appendChild(row); outer.appendChild(dw);
+  return outer;
+}
+
+function tstampRow(p,label,key){
+  const row=el("div","tstamp");
+  const v=p.downtime[key];
+  row.innerHTML=`<span class="tl">${label}</span><span class="tv">${v||"—"}</span>`;
+  const b=el("button","mini",v?"Edit":"Now");
+  b.addEventListener("click",()=>{
+    const cur=v||nowHM();
+    const inp=prompt(label+" — time (HH:MM)",cur);
+    if(inp!==null){ p.downtime[key]=inp.trim(); save(); renderFleet(); }
+  });
+  row.appendChild(b);
+  return row;
+}
+function diffMin(a,b){ const [ah,am]=a.split(":").map(Number); const [bh,bm]=b.split(":").map(Number); let d=(bh*60+bm)-(ah*60+am); if(d<0)d+=1440; return d; }
+
+/* ============ KPIs ============ */
+function renderKpis(){
+  const p=state.plant;
+  document.getElementById("kWork").textContent=p.filter(x=>x.status==="working").length;
+  document.getElementById("kDown").textContent=p.filter(x=>x.status==="down").length;
+  document.getElementById("kUnalloc").textContent=p.filter(x=>x.status!=="down"&&!x.task).length;
+  document.getElementById("kFlag").textContent=p.filter(x=>{const c=certState(x);return c==="due"||c==="missing";}).length;
+}
+
+/* ============ TYPE CHIPS ============ */
+function renderChips(){
+  const wrap=document.getElementById("typeChips"); wrap.innerHTML="";
+  const mk=(val,label)=>{ const c=el("button","chip"+(typeFilter===val?" on":""),label); c.addEventListener("click",()=>{typeFilter=val;renderChips();renderFleet();}); return c; };
+  wrap.appendChild(mk("ALL","All plant"));
+  CATS.forEach(cat=>{ if(state.plant.some(p=>p.cat===cat)) wrap.appendChild(mk(cat,CAT_LABEL[cat])); });
+}
+
+/* ============ MESSAGE ============ */
+function buildMessage(){
+  const lines=[];
+  lines.push(`*PLANT ALLOCATION — ${fmtDate().toUpperCase()}*`);
+  lines.push(`Shift start ${state.shift}${state.group!=="Weekday"?" · "+state.group:""}`);
+  lines.push("");
+  CATS.forEach(cat=>{
+    const rows=state.plant.filter(p=>p.cat===cat && p.status!=="down");
+    if(!rows.length) return;
+    lines.push(`*${CAT_LABEL[cat]}*`);
+    rows.forEach(p=>{
+      const op=p.operator||"—";
+      lines.push(`• ${p.plant} (${op}) — ${p.loc||"TBC"}${p.task?": "+p.task:""}`);
+    });
+    lines.push("");
+  });
+  const down=state.plant.filter(p=>p.status==="down");
+  if(down.length){
+    lines.push("*⚠ OFF / BROKEN DOWN*");
+    down.forEach(p=>lines.push(`• ${p.plant} (${p.operator||"—"}) — down${p.downtime.down?" since "+p.downtime.down:""}`));
+    lines.push("");
+  }
+  lines.push(`Total working: ${state.plant.filter(p=>p.status==="working").length}`);
+  return lines.join("\n").trim();
+}
+function renderMessage(){ document.getElementById("msgOut").textContent=buildMessage(); }
+
+/* ============ REPORT ============ */
+function renderReportBuild(){
+  const wrap=document.getElementById("reportBuild");
+  const active=state.plant.filter(p=>p.task||p.status==="down");
+  if(!active.length){ wrap.innerHTML=`<div class="empty"><svg viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4" stroke="#6b7078" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="9" stroke="#6b7078" stroke-width="2"/></svg><p>No activity logged yet.<br>Set tasks on the Allocate tab and they'll gather here.</p></div>`; return; }
+  wrap.innerHTML="";
+  // group by location
+  const byLoc={};
+  active.forEach(p=>{ {var _k=p.loc||"Unassigned"; if(!byLoc[_k])byLoc[_k]=[]; byLoc[_k].push(p);} });
+  Object.keys(byLoc).sort().forEach(loc=>{
+    const card=el("div","rep-card");
+    card.innerHTML=`<div class="rh"><span class="z">📍 ${loc}</span></div>`;
+    byLoc[loc].forEach(p=>{
+      const line=el("div"); line.style.cssText="font-size:13px;padding:6px 0;border-top:1px solid var(--line)";
+      let txt=`<b style="font-family:var(--mono)">${p.plant}</b> — ${p.task||"(no task)"}`;
+      if(p.status==="down"){ const dt=p.downtime; let dd=""; if(dt.down&&dt.up)dd=` · down ${diffMin(dt.down,dt.up)}min`; else if(dt.down)dd=` · down from ${dt.down}`; txt+=`<span style="color:var(--stop)"> [BREAKDOWN${dd}]</span>`; }
+      line.innerHTML=txt;
+      card.appendChild(line);
+    });
+    wrap.appendChild(card);
+  });
+}
+function buildReport(){
+  const L=[];
+  L.push(`DAILY PLANT ACTIVITY REPORT`);
+  L.push(fmtDateFull());
+  L.push(`Coordinator log · ${CATS.length} plant categories`);
+  L.push("―".repeat(22));
+  const active=state.plant.filter(p=>p.task||p.status==="down");
+  const byLoc={}; active.forEach(p=>{ {var _k=p.loc||"Unassigned"; if(!byLoc[_k])byLoc[_k]=[]; byLoc[_k].push(p);} });
+  Object.keys(byLoc).sort().forEach(loc=>{
+    L.push(""); L.push(`【 ${loc} 】`);
+    byLoc[loc].forEach(p=>{
+      L.push(`  ${p.plant} (${p.operator||"—"})`);
+      L.push(`    Task: ${p.task||"—"}`);
+      if(p.status==="down"){
+        const dt=p.downtime;
+        L.push(`    BREAKDOWN — down:${dt.down||"?"} fitter:${dt.fitter||"?"} up:${dt.up||"?"}`);
+        if(dt.down&&dt.up)L.push(`    Downtime: ${diffMin(dt.down,dt.up)} min`);
+      }
+    });
+  });
+  L.push(""); L.push("―".repeat(22));
+  const work=state.plant.filter(p=>p.status==="working").length;
+  const down=state.plant.filter(p=>p.status==="down").length;
+  L.push(`Summary: ${work} working · ${down} broken down · ${active.length} areas of activity logged`);
+  const certIssues=state.plant.filter(p=>{const c=certState(p);return c==="missing"||c==="due";});
+  if(certIssues.length){
+    L.push(""); L.push(`⚠ Cert attention (${certIssues.length}): `+certIssues.map(p=>p.plant).join(", "));
+  }
+  return L.join("\n");
+}
+
+/* ============ COPY ============ */
+async function copyText(txt,okMsg){
+  try{ await navigator.clipboard.writeText(txt); toast(okMsg||"Copied"); }
+  catch(e){
+    const ta=document.createElement("textarea"); ta.value=txt; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand("copy"); toast(okMsg||"Copied"); }catch(_){ toast("Copy failed — select manually"); }
+    ta.remove();
+  }
+}
+
+/* ============ NAV ============ */
+function show(view){
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("on"));
+  document.getElementById("v-"+view).classList.add("on");
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.v===view));
+  if(view==="message")renderMessage();
+  if(view==="report")renderReportBuild();
+  window.scrollTo(0,0);
+}
+
+/* ============ WIRE UP ============ */
+document.getElementById("tabbar").addEventListener("click",e=>{ const b=e.target.closest(".tab"); if(b)show(b.dataset.v); });
+document.getElementById("grpSeg").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return; state.group=b.dataset.g; document.querySelectorAll("#grpSeg button").forEach(x=>x.classList.toggle("on",x===b)); save(); });
+document.getElementById("shiftSeg").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return; state.shift=b.dataset.s; document.querySelectorAll("#shiftSeg button").forEach(x=>x.classList.toggle("on",x===b)); save(); });
+document.getElementById("cpMsg").addEventListener("click",()=>copyText(buildMessage(),"Briefing copied — paste into WhatsApp"));
+document.getElementById("genReport").addEventListener("click",()=>{
+  const out=buildReport();
+  document.getElementById("reportOut").textContent=out;
+  document.getElementById("reportOutWrap").style.display="block";
+  document.getElementById("reportOutWrap").scrollIntoView({behavior:"smooth",block:"start"});
+  toast("Report created");
+});
+document.getElementById("cpReport").addEventListener("click",()=>copyText(document.getElementById("reportOut").textContent,"Report copied"));
+document.getElementById("resetDay").addEventListener("click",()=>{ if(confirm("Clear today's tasks, statuses and breakdown logs? Fleet and certs stay.")){ state.plant.forEach(p=>{p.task="";p.status="working";p.downtime={down:null,fitter:null,up:null};}); save(); renderFleet(); toast("Today reset"); } });
+document.getElementById("wipeAll").addEventListener("click",()=>{ if(confirm("Wipe ALL data and reload the original fleet? Cannot be undone.")){ localStorage.removeItem(LS_KEY); state=freshFromSeed(); save(); renderChips(); renderFleet(); toast("Reloaded from fleet register"); } });
+document.getElementById("exportData").addEventListener("click",()=>{
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="szc_plant_backup_"+todayISO()+".json"; a.click();
+  toast("Backup downloaded");
+});
+
+/* ============ INIT ============ */
+try{
+  document.getElementById("datePill").textContent=fmtDate();
+  document.querySelectorAll("#grpSeg button").forEach(function(x){x.classList.toggle("on",x.dataset.g===state.group);});
+  document.querySelectorAll("#shiftSeg button").forEach(function(x){x.classList.toggle("on",x.dataset.s===state.shift);});
+  renderChips();
+  renderFleet();
+}catch(err){
+  document.body.innerHTML='<div style="padding:40px 24px;font-family:sans-serif;color:#f2f0ea;background:#141518;min-height:100vh">'
+    +'<h2 style="color:#ffb200;margin-bottom:12px">Couldn\'t start</h2>'
+    +'<p style="line-height:1.6;color:#9aa0aa">The app hit an error loading on this device. Send this line to Claude and it\'ll fix it:</p>'
+    +'<pre style="margin-top:14px;padding:12px;background:#23262c;border-radius:8px;color:#e2483d;white-space:pre-wrap;font-size:12px">'+(err&&err.message?err.message:err)+'</pre>'
+    +'<button onclick="try{localStorage.removeItem(\'szc_plant_v1\');location.reload()}catch(e){location.reload()}" style="margin-top:16px;background:#ffb200;color:#141518;font-weight:700;border:none;padding:12px 18px;border-radius:8px">Reset & reload</button>'
+    +'</div>';
+}
+</script>
+</body>
+</html>
