@@ -116,7 +116,11 @@ select,input[type=text],textarea{width:100%;background:var(--bg);border:1px soli
   border-radius:8px;padding:10px 11px;font-size:14px}
 select:focus,input:focus,textarea:focus{outline:2px solid var(--hi);outline-offset:-1px;border-color:var(--hi)}
 textarea{resize:vertical;min-height:58px;line-height:1.45}
-.statuses{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.statuses{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+.dot.off{background:var(--ink-faint)}
+.st-btn.on.off{background:#22252b;border-color:var(--ink-faint);color:var(--ink)}
+.card.s-dayoff{border-left-color:var(--ink-faint);opacity:.72}
+.pill.off{background:#22252b;color:var(--ink-dim)}
 .st-btn{padding:11px 6px;border-radius:8px;border:1px solid var(--line);background:var(--bg);
   font-weight:700;font-size:12.5px;color:var(--ink-dim);display:flex;flex-direction:column;align-items:center;gap:5px}
 .st-btn .dot{width:8px;height:8px}
@@ -291,6 +295,12 @@ input[type=date].expired{border-color:var(--stop);color:var(--stop)}
         </button>
       </div>
       <pre id="reportOut"></pre>
+      <div style="padding:0 14px 14px">
+        <button class="big-btn" id="emailReport" style="margin:0">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M3 6h18v12H3zM3 7l9 6 9-6" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+          Email this report
+        </button>
+      </div>
     </div>
     <p class="hint">This pulls together what every machine did today — location, task, and any downtime — into a report you can send to the manager. In the full system this posts straight to their dashboard.</p>
   </div>
@@ -302,7 +312,23 @@ input[type=date].expired{border-color:var(--stop);color:var(--stop)}
     <b>Prototype — you're the test dummy.</b> Everything works and saves on this device: allocations, moves, breakdowns, certs, reports. What's not here yet is the multi-user side — manager and supervisor logins syncing across phones. That's the next build, and it needs a server. This trial tells us exactly what that version has to do.
   </div>
   <div class="wrap">
-    <div class="sec-h"><span class="idx">04</span><h2>Data & tools</h2><span class="rule"></span></div>
+    <div class="sec-h"><span class="idx">04</span><h2>Manage operators</h2><span class="rule"></span></div>
+    <p class="hint" style="padding-top:0">Add operators returning to work or new starters. They'll appear in the dropdown for that plant type. Remove anyone who's left.</p>
+    <div class="field" style="margin-bottom:10px">
+      <label>Plant type</label>
+      <select id="opMgrType"></select>
+    </div>
+    <div class="field" style="margin-bottom:10px">
+      <label>Operator name</label>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="opMgrName" placeholder="e.g. John Smith" style="flex:1">
+        <button class="mini" id="opMgrAdd" style="padding:0 16px;background:var(--hi);color:var(--hi-ink);font-weight:700">Add</button>
+      </div>
+    </div>
+    <div id="opMgrList" style="margin-top:6px"></div>
+  </div>
+  <div class="wrap">
+    <div class="sec-h"><span class="idx">05</span><h2>Data & tools</h2><span class="rule"></span></div>
     <button class="big-btn ghost" id="resetDay">Reset today's tasks</button>
     <button class="big-btn ghost" id="exportData">Export all data (backup)</button>
     <button class="big-btn ghost" id="wipeAll" style="border-color:#5a2a26;color:#e2483d">Wipe everything & reload fleet</button>
@@ -334,24 +360,34 @@ input[type=date].expired{border-color:var(--stop);color:var(--stop)}
 
 <script>
 /* ============ SEED DATA (from CWA plant register) ============ */
-const SEED_PLANT = [{"cat":"180's","type":180,"plant":"3CX48","op":"Leroy Tuitt","loc":"Site Wide"},{"cat":"360 Tracked","type":360,"plant":"EX25TLR11","op":"Gurvinder Singh","loc":"Bentonite Pad"},{"cat":"360 Tracked","type":360,"plant":"EX25TZ124 GPS","op":"Jake Mackenzie","loc":"Crushing Yard"},{"cat":"360 Tracked","type":360,"plant":"EX40T167","op":"Lukas Kowalski","loc":"Crushing Yard"},{"cat":"360 Tracked","type":360,"plant":"EX40T157","op":"Richard Fox","loc":"Northern Mound"},{"cat":"360 Tracked","type":360,"plant":"EX40T151","op":"Gheorghe Miron","loc":"9B"},{"cat":"360 Tracked","type":360,"plant":"EX40T182 GPS","op":"Alan Anderson","loc":"4"},{"cat":"360 Tracked","type":360,"plant":"EX40T183 GPS","op":"James Attrill","loc":"Crushing Yard"},{"cat":"360 Tracked","type":360,"plant":"EX25T379","op":"Stephen Magi","loc":"North of Zone 1"},{"cat":"360 Tracked","type":360,"plant":"EX9T387 GPS","op":"Octavia","loc":"2.2"},{"cat":"360 Tracked","type":360,"plant":"EX987","op":"Timothy Bekett","loc":"Crushing Yard"},{"cat":"360 Tracked","type":360,"plant":"JCB 370","op":"Paulius Simkunas","loc":"Stone Yard"},{"cat":"360 Tracked","type":360,"plant":"EX988","op":"Craig Griffiths","loc":"6"},{"cat":"360 Tracked","type":360,"plant":"EWK593","op":"Damian Suchta","loc":"Crushing Yard"},{"cat":"360 Tracked","type":360,"plant":"EWK535","op":"James Ferry","loc":"9B"},{"cat":"Dozer/Grader","type":"Dozer","plant":"DZ6T135 GPS","op":"Kevin Taylor","loc":"1A"},{"cat":"Dozer/Grader","type":"Dozer","plant":"DZ6T91","op":"Gary Oldroyd","loc":"Northern Mound"},{"cat":"Dozer/Grader","type":"Dozer","plant":"DZ6T131","op":"Girts Platacis","loc":"1A"},{"cat":"Dozer/Grader","type":"Dozer","plant":"DZ6T122 GPS","op":"Gordan Jackson","loc":"2.2"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T150","op":"Darren Nunn","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T176","op":"Mike Hardee","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T180","op":"Rhys Phillips","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T186","op":"Uchenna Odoputa","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T205","op":"Simon Felton","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T207","op":"Paul Lamen","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T211","op":"Curtis Bowles","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T233","op":"Florinel Stuparu","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T234","op":"Nicolae Jitcu","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T235","op":"Mark Cruickshank","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T236","op":"Alex Thurling","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T239","op":"Ion Onica","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T240","op":"Aiden McElroy","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T65","op":"Harjinder Kang","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T70","op":"Brendan Mcelroy","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T75","op":"Shane Lanley","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T76","op":"Kyle Wakeman Brotherhood","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T78","op":"Kenneth Odo","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T79","op":"Dimitrian Arsenii","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T82","op":"John McElroy","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T83","op":"James Ball","loc":""},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T85","op":"Onka Singh","loc":""},{"cat":"Rollers","type":"Roller","plant":"RO13T99","op":"Nyameke Armah","loc":""},{"cat":"Rollers","type":"Roller","plant":"RO3T121","op":"Kyle Ward","loc":"1A"},{"cat":"Rollers","type":"Roller","plant":"RO13T121","op":"Paul Frith","loc":"Crushing Yard"},{"cat":"Tractor & Bowsers","type":"Tractor","plant":"TK68 DB154","op":"Marius Martinaitis","loc":"4"},{"cat":"Tractor & Bowsers","type":"Tractor","plant":"TK227 DB200 DB52","op":"Phil Owens","loc":"Dust Suppression"},{"cat":"Telehandler","type":"Telehandler","plant":"TH17M57","op":"Jack Meacey","loc":"4"},{"cat":"Telehandler","type":"Telehandler","plant":"TH17M51","op":"Chimezie Okolo","loc":"4"}];
+const SEED_PLANT = [{"cat":"180's","type":180,"plant":"3CX48","op":"Leroy Tuitt","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EX25TLR11","op":"Gurvinder Singh","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EX25TZ124 GPS","op":"Jake Mackenzie","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EX40T167","op":"Lukas Kowalski","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EX40T157","op":"Richard Fox","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EX40T151","op":"Gheorghe Miron","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EX40T182 GPS","op":"Alan Anderson","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EX40T183 GPS","op":"James Attrill","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EX25T379","op":"Stephen Magi","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EX9T387 GPS","op":"Self Drive","loc":"MCA","zone":"MCA"},{"cat":"Dozer/Grader","type":"Dozer","plant":"DZ6T135 GPS","op":"Kevin Taylor","loc":"MCA","zone":"MCA"},{"cat":"Dozer/Grader","type":"Dozer","plant":"DZ6T91","op":"Gary Oldroyd","loc":"MCA","zone":"MCA"},{"cat":"Dozer/Grader","type":"Dozer","plant":"DZ6T131","op":"Girts Platacis","loc":"MCA","zone":"MCA"},{"cat":"Dozer/Grader","type":"Dozer","plant":"DZ6T122 GPS","op":"Gordan Jackson","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T150","op":"Darren Nunn","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T176","op":"Mike Hardee","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T180","op":"Rhys Phillips","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T186","op":"Uchenna Odoputa","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T205","op":"Simon Felton","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T207","op":"Paul Lamen","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T211","op":"Curtis Bowles","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T233","op":"Florinel Stuparu","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T234","op":"Nicolae Jitcu","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T235","op":"Mark Cruickshank","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T239","op":"Ion Onica","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T65","op":"Harjinder Kang","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T70","op":"Brendan McElroy","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T75","op":"Shane Lanley","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T76","op":"Kyle Wakeman Brotherhood","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T78","op":"Kenneth Odo","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T79","op":"Dimitrian Arsenii","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T82","op":"John McElroy","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T83","op":"James Ball","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T85","op":"Onka Singh","loc":"MCA","zone":"MCA"},{"cat":"Rollers","type":"Roller","plant":"RO13T99","op":"Nyameke Armah","loc":"MCA","zone":"MCA"},{"cat":"Rollers","type":"Roller","plant":"RO3T121","op":"Kyle Ward","loc":"MCA","zone":"MCA"},{"cat":"Rollers","type":"Roller","plant":"RO13T121","op":"Paul Frith","loc":"MCA","zone":"MCA"},{"cat":"Tractor & Bowsers","type":"Tractor","plant":"TK68 DB154","op":"Marius Martinaitis","loc":"MCA","zone":"MCA"},{"cat":"Tractor & Bowsers","type":"Tractor","plant":"TK227 DB200 DB52","op":"Phil Owens","loc":"MCA","zone":"MCA"},{"cat":"Telehandler","type":"Telehandler","plant":"TH17M57","op":"Jack Meacey","loc":"MCA","zone":"MCA"},{"cat":"Telehandler","type":"Telehandler","plant":"TH17M51","op":"Chimezie Okolo","loc":"MCA","zone":"MCA"}];
+const OPERATOR_POOLS = {"180's":["Leroy Tuitt"],"360 Tracked":["Alan Anderson","Brian Dunworth","Gheorghe Miron","Gurvinder Singh","Jake Mackenzie","James Attrill","Levi Taylor Wilson","Lukas Kowalski","Richard Fox","Sean Postlethwaite","Stephen Magi"],"Dozer/Grader":["Gary Oldroyd","Girts Platacis","Gordan Jackson","Harminder Singh Tiwana","Justin Shreeve","Kevin Dawson","Kevin Taylor","Paul Kavanagh","Richard Washford","Steven Tierney"],"Dump Trucks/Hydreamer":["Aiden McElroy","Alex Thurling","Andrew Berry","Brendan McElroy","Curtis Bowles","Darren Nunn","Dimitrian Arsenii","Florinel Stuparu","Harjinder Kang","Ion Onica","James Ball","Jason Wright","John McElroy","Kamil Buzowicz","Kenneth Odo","Kyle Wakeman Brotherhood","Mark Cruickshank","Mike Hardee","Nicolae Jitcu","Oliver Selby","Onka Singh","Patrick Meehan","Paul Lamen","Rhys Phillips","Robert Mills","Roman Montana","Sean McElroy","Shane Lanley","Simon Felton","Uchenna Odoputa","Wiktor Kuchier"],"Material Handler":["Colin Derbyshire","Martyn Derbyshire","Nicholas Walker"],"Rollers":["Curtis Bowles","Kyle Ward","Nyameke Armah","Paul Frith","Ramandip Singh"],"Tractor & Bowsers":["Kyle Ward","Marius Martinaitis","Phil Owens"],"Telehandler":["Chimezie Okolo","Jack Meacey","Micheal Monaghan"]};
 
 const LOCATIONS = ["Northern Mound","Crushing Yard","Old Crush Yard","Stone Yard","Stone Stockpile","Bentonite Pad","Dust Suppression","Site Wide","North of Zone 1","TCA","Zone 2","Zone 4","Zone 9","1A","1.1","1.2","2.1","2.2","2.3","3A","4","4A","4B","5A","6","6A","6B","9A","9B","SSSI South","MBIF","Stockpile 1"];
-const CATS = ["180's","360 Tracked","Dozer/Grader","Dump Trucks/Hydreamer","Rollers","Tractor & Bowsers","Telehandler"];
-const CAT_LABEL = {"180's":"3CX / 180","360 Tracked":"360 Excavators","Dozer/Grader":"Dozers","Dump Trucks/Hydreamer":"ADTs","Rollers":"Rollers","Tractor & Bowsers":"Tractors & Bowsers","Telehandler":"Telehandlers"};
-const TYPE_TAG = t => ({180:"3CX",360:"360",Dozer:"DOZ",ADT:"ADT",Roller:"ROLL",Tractor:"TRAC",Telehandler:"TELE"}[t]||String(t));
+const CATS = ["180's","360 Tracked","Material Handler","Dozer/Grader","Dump Trucks/Hydreamer","Rollers","Tractor & Bowsers","Telehandler"];
+const CAT_LABEL = {"180's":"3CX / 180","360 Tracked":"360 Excavators","Dozer/Grader":"Dozers","Dump Trucks/Hydreamer":"ADTs","Rollers":"Rollers","Tractor & Bowsers":"Tractors & Bowsers","Telehandler":"Telehandlers","Material Handler":"Material Handlers"};
+const TYPE_TAG = t => ({180:"3CX",360:"360",Dozer:"DOZ",ADT:"ADT",Roller:"ROLL",Tractor:"TRAC",Telehandler:"TELE",MatHandler:"MH"}[t]||String(t));
 // excavators need lift plan + LOLER; anything lifting needs LOLER
-const NEEDS_COMPLIANCE = c => c==="360 Tracked" || c==="Telehandler";
+const NEEDS_COMPLIANCE = c => c==="360 Tracked" || c==="Telehandler" || c==="Material Handler";
+
+// operators available for a plant type = base pool + any custom-added operators
+function poolFor(cat){
+  const base=(OPERATOR_POOLS[cat]||[]).slice();
+  const custom=(state && state.customOps && state.customOps[cat])||[];
+  const removed=(state && state.removedOps && state.removedOps[cat])||[];
+  const all=base.concat(custom.filter(n=>!base.includes(n)));
+  return all.filter(n=>!removed.includes(n));
+}
 
 /* ============ STATE ============ */
-const LS_KEY = "szc_plant_v1";
+const LS_KEY = "szc_plant_v3";
 let state = load();
 
 function freshFromSeed(){
   const rows = SEED_PLANT.map((p,i)=>({
     id:"P"+i,
     cat:p.cat, type:p.type, plant:p.plant,
-    operator:p.op||"", homeLoc:p.loc||"",
+    operator:p.op||"", defaultOp:p.op||"", homeLoc:p.loc||"",
     // daily/live fields
     loc:p.loc||"", task:"", status:"working",
     downtime:{down:null,fitter:null,up:null},
@@ -362,7 +398,7 @@ function freshFromSeed(){
     lolerExp:"",
     notes:""
   }));
-  return {plant:rows, group:"Weekday", shift:"07:00", day:todayISO()};
+  return {plant:rows, group:"Weekday", shift:"07:00", day:todayISO(), customOps:{}, reportEmail:""};
 }
 function load(){
   try{
@@ -372,9 +408,13 @@ function load(){
   return freshFromSeed();
 }
 function migrateDay(s){
-  // if stored day isn't today, roll tasks over but keep fleet+compliance
+  // ensure fields exist for data saved before they were added
+  if(!s.customOps) s.customOps={};
+  if(s.reportEmail===undefined) s.reportEmail="";
+  s.plant.forEach(p=>{ if(p.defaultOp===undefined) p.defaultOp=p.operator||""; });
+  // if stored day isn't today, roll over: clear tasks, reset status, restore usual operator
   if(s.day!==todayISO()){
-    s.plant.forEach(p=>{ p.task=""; p.status="working"; p.downtime={down:null,fitter:null,up:null}; });
+    s.plant.forEach(p=>{ p.task=""; p.status="working"; p.operator=p.defaultOp; p.downtime={down:null,fitter:null,up:null}; });
     s.day=todayISO();
   }
   return s;
@@ -437,7 +477,7 @@ function cardFor(p){
     <div class="meta"><span class="loc-tag">📍 ${p.loc||"—"}</span>${p.task?`<span>${p.task.length>28?p.task.slice(0,28)+"…":p.task}</span>`:`<span style="color:var(--caution)">no task set</span>`}</div>`;
   const badges=el("div","badges");
   // status pill
-  const stMap={working:["go","Working"],down:["stop","Down"],standby:["caution","Standby"]};
+  const stMap={working:["go","Working"],down:["stop","Down"],standby:["caution","Standby"],dayoff:["off","Day Off"]};
   const [sc,sl]=stMap[p.status];
   badges.appendChild(el("span","pill "+sc,sl));
   // cert dot
@@ -458,7 +498,7 @@ function cardFor(p){
   const stField=el("div","field");
   stField.innerHTML=`<label>Status</label>`;
   const stWrap=el("div","statuses");
-  [["working","go","Working"],["standby","caution","Standby"],["down","stop","Down"]].forEach(([v,c,l])=>{
+  [["working","go","Working"],["standby","caution","Standby"],["down","stop","Down"],["dayoff","off","Day Off"]].forEach(([v,c,l])=>{
     const b=el("button","st-btn "+c+(p.status===v?" on":""),`<span class="dot ${c}"></span>${l}`);
     b.addEventListener("click",()=>{
       p.status=v;
@@ -488,13 +528,30 @@ function cardFor(p){
   taskField.appendChild(ta);
   body.appendChild(taskField);
 
-  // operator
+  // operator (type-grouped dropdown; default operator pre-selected, swap in cover when off)
   const opField=el("div","field");
-  opField.innerHTML=`<label>Operator</label>`;
-  const opIn=el("input"); opIn.type="text"; opIn.value=p.operator; opIn.placeholder="Operator name";
-  opIn.addEventListener("input",()=>{ p.operator=opIn.value; });
-  opIn.addEventListener("blur",()=>{ save(); renderFleet(); });
-  opField.appendChild(opIn);
+  const isCover = p.operator && p.operator!==p.defaultOp;
+  opField.innerHTML=`<label>Operator${isCover?' <span style="color:var(--caution)">· cover</span>':''}</label>`;
+  const opSel=el("select");
+  const pool=poolFor(p.cat).slice();
+  // make sure the machine's own default + current value are always present
+  [p.defaultOp,p.operator].forEach(nm=>{ if(nm && !pool.includes(nm)) pool.push(nm); });
+  pool.sort();
+  // blank option
+  const blank=el("option",null,"— none —"); blank.value=""; opSel.appendChild(blank);
+  pool.forEach(nm=>{
+    const o=el("option",null, nm===p.defaultOp? nm+"  (usual)" : nm); o.value=nm;
+    if(nm===p.operator) o.selected=true; opSel.appendChild(o);
+  });
+  opSel.addEventListener("change",()=>{ p.operator=opSel.value; save(); renderFleet(); });
+  opField.appendChild(opSel);
+  // quick reset to usual operator if currently on cover
+  if(isCover){
+    const rb=el("button","mini","↺ Back to usual ("+p.defaultOp+")");
+    rb.style.cssText="margin-top:7px;align-self:flex-start";
+    rb.addEventListener("click",()=>{ p.operator=p.defaultOp; save(); renderFleet(); });
+    opField.appendChild(rb);
+  }
   body.appendChild(opField);
 
   // ---- compliance ----
@@ -565,7 +622,7 @@ function renderKpis(){
   const p=state.plant;
   document.getElementById("kWork").textContent=p.filter(x=>x.status==="working").length;
   document.getElementById("kDown").textContent=p.filter(x=>x.status==="down").length;
-  document.getElementById("kUnalloc").textContent=p.filter(x=>x.status!=="down"&&!x.task).length;
+  document.getElementById("kUnalloc").textContent=p.filter(x=>x.status!=="down"&&x.status!=="dayoff"&&!x.task).length;
   document.getElementById("kFlag").textContent=p.filter(x=>{const c=certState(x);return c==="due"||c==="missing";}).length;
 }
 
@@ -584,7 +641,7 @@ function buildMessage(){
   lines.push(`Shift start ${state.shift}${state.group!=="Weekday"?" · "+state.group:""}`);
   lines.push("");
   CATS.forEach(cat=>{
-    const rows=state.plant.filter(p=>p.cat===cat && p.status!=="down");
+    const rows=state.plant.filter(p=>p.cat===cat && p.status!=="down" && p.status!=="dayoff");
     if(!rows.length) return;
     lines.push(`*${CAT_LABEL[cat]}*`);
     rows.forEach(p=>{
@@ -607,7 +664,7 @@ function renderMessage(){ document.getElementById("msgOut").textContent=buildMes
 /* ============ REPORT ============ */
 function renderReportBuild(){
   const wrap=document.getElementById("reportBuild");
-  const active=state.plant.filter(p=>p.task||p.status==="down");
+  const active=state.plant.filter(p=>p.status!=="dayoff" && (p.task||p.status==="down"));
   if(!active.length){ wrap.innerHTML=`<div class="empty"><svg viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4" stroke="#6b7078" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="9" stroke="#6b7078" stroke-width="2"/></svg><p>No activity logged yet.<br>Set tasks on the Allocate tab and they'll gather here.</p></div>`; return; }
   wrap.innerHTML="";
   // group by location
@@ -632,7 +689,7 @@ function buildReport(){
   L.push(fmtDateFull());
   L.push(`Coordinator log · ${CATS.length} plant categories`);
   L.push("―".repeat(22));
-  const active=state.plant.filter(p=>p.task||p.status==="down");
+  const active=state.plant.filter(p=>p.status!=="dayoff" && (p.task||p.status==="down"));
   const byLoc={}; active.forEach(p=>{ {var _k=p.loc||"Unassigned"; if(!byLoc[_k])byLoc[_k]=[]; byLoc[_k].push(p);} });
   Object.keys(byLoc).sort().forEach(loc=>{
     L.push(""); L.push(`【 ${loc} 】`);
@@ -667,6 +724,68 @@ async function copyText(txt,okMsg){
   }
 }
 
+/* ============ MANAGE OPERATORS ============ */
+function opMgrCats(){ return CATS.filter(c=>state.plant.some(p=>p.cat===c) || OPERATOR_POOLS[c]); }
+function renderOpMgr(){
+  const typeSel=document.getElementById("opMgrType");
+  if(!typeSel) return;
+  if(!typeSel.dataset.filled){
+    opMgrCats().forEach(c=>{ const o=el("option",null,CAT_LABEL[c]||c); o.value=c; typeSel.appendChild(o); });
+    typeSel.dataset.filled="1";
+  }
+  const cat=typeSel.value||opMgrCats()[0];
+  typeSel.value=cat;
+  const list=document.getElementById("opMgrList");
+  list.innerHTML="";
+  const custom=(state.customOps[cat]||[]);
+  const all=poolFor(cat);
+  if(!all.length){ list.appendChild(el("div","hint","No operators yet for this type.")); return; }
+  all.slice().sort().forEach(nm=>{
+    const isCustom=custom.includes(nm);
+    const row=el("div"); row.style.cssText="display:flex;align-items:center;gap:10px;padding:9px 11px;background:var(--panel);border:1px solid var(--line);border-radius:8px;margin-bottom:7px";
+    row.innerHTML=`<span style="flex:1;font-size:14px">${nm}${isCustom?' <span style="color:var(--hi);font-size:11px">· added</span>':''}</span>`;
+    const del=el("button","mini","Remove");
+    del.addEventListener("click",()=>{
+      if(isCustom){
+        state.customOps[cat]=custom.filter(x=>x!==nm);
+      }else{
+        state.removedOps=state.removedOps||{};
+        (state.removedOps[cat]=state.removedOps[cat]||[]).push(nm);
+      }
+      save(); renderOpMgr(); renderFleet();
+    });
+    row.appendChild(del);
+    list.appendChild(row);
+  });
+}
+function addCustomOp(){
+  const typeSel=document.getElementById("opMgrType");
+  const nameIn=document.getElementById("opMgrName");
+  const cat=typeSel.value; const nm=(nameIn.value||"").trim();
+  if(!nm){ toast("Type a name first"); return; }
+  state.customOps[cat]=state.customOps[cat]||[];
+  if(poolFor(cat).map(x=>x.toLowerCase()).includes(nm.toLowerCase())){ toast(nm+" is already listed"); return; }
+  state.customOps[cat].push(nm);
+  if(state.removedOps&&state.removedOps[cat]) state.removedOps[cat]=state.removedOps[cat].filter(x=>x!==nm);
+  nameIn.value="";
+  save(); renderOpMgr(); renderFleet();
+  toast(nm+" added to "+(CAT_LABEL[cat]||cat));
+}
+
+/* ============ EMAIL REPORT ============ */
+function emailReport(){
+  const body=document.getElementById("reportOut").textContent||buildReport();
+  const to=prompt("Send report to (email address):", state.reportEmail||"");
+  if(to===null) return;
+  state.reportEmail=to.trim(); save();
+  const subject="SZC Plant Daily Report — "+fmtDate();
+  copyText(body,"Report copied — opening email");
+  const url="mailto:"+encodeURIComponent(to.trim())
+    +"?subject="+encodeURIComponent(subject)
+    +"&body="+encodeURIComponent(body);
+  setTimeout(()=>{ window.location.href=url; }, 350);
+}
+
 /* ============ NAV ============ */
 function show(view){
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("on"));
@@ -674,6 +793,7 @@ function show(view){
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.v===view));
   if(view==="message")renderMessage();
   if(view==="report")renderReportBuild();
+  if(view==="setup")renderOpMgr();
   window.scrollTo(0,0);
 }
 
@@ -682,6 +802,10 @@ document.getElementById("tabbar").addEventListener("click",e=>{ const b=e.target
 document.getElementById("grpSeg").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return; state.group=b.dataset.g; document.querySelectorAll("#grpSeg button").forEach(x=>x.classList.toggle("on",x===b)); save(); });
 document.getElementById("shiftSeg").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return; state.shift=b.dataset.s; document.querySelectorAll("#shiftSeg button").forEach(x=>x.classList.toggle("on",x===b)); save(); });
 document.getElementById("cpMsg").addEventListener("click",()=>copyText(buildMessage(),"Briefing copied — paste into WhatsApp"));
+document.getElementById("emailReport").addEventListener("click",emailReport);
+document.getElementById("opMgrAdd").addEventListener("click",addCustomOp);
+document.getElementById("opMgrName").addEventListener("keydown",e=>{ if(e.key==="Enter")addCustomOp(); });
+document.getElementById("opMgrType").addEventListener("change",renderOpMgr);
 document.getElementById("genReport").addEventListener("click",()=>{
   const out=buildReport();
   document.getElementById("reportOut").textContent=out;
@@ -690,7 +814,7 @@ document.getElementById("genReport").addEventListener("click",()=>{
   toast("Report created");
 });
 document.getElementById("cpReport").addEventListener("click",()=>copyText(document.getElementById("reportOut").textContent,"Report copied"));
-document.getElementById("resetDay").addEventListener("click",()=>{ if(confirm("Clear today's tasks, statuses and breakdown logs? Fleet and certs stay.")){ state.plant.forEach(p=>{p.task="";p.status="working";p.downtime={down:null,fitter:null,up:null};}); save(); renderFleet(); toast("Today reset"); } });
+document.getElementById("resetDay").addEventListener("click",()=>{ if(confirm("Clear today's tasks, statuses and breakdown logs, and restore usual operators? Certs stay.")){ state.plant.forEach(p=>{p.task="";p.status="working";p.operator=p.defaultOp;p.downtime={down:null,fitter:null,up:null};}); save(); renderFleet(); toast("Today reset"); } });
 document.getElementById("wipeAll").addEventListener("click",()=>{ if(confirm("Wipe ALL data and reload the original fleet? Cannot be undone.")){ localStorage.removeItem(LS_KEY); state=freshFromSeed(); save(); renderChips(); renderFleet(); toast("Reloaded from fleet register"); } });
 document.getElementById("exportData").addEventListener("click",()=>{
   const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
