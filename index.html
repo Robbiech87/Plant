@@ -328,7 +328,19 @@ input[type=date].expired{border-color:var(--stop);color:var(--stop)}
     <div id="opMgrList" style="margin-top:6px"></div>
   </div>
   <div class="wrap">
-    <div class="sec-h"><span class="idx">05</span><h2>Data & tools</h2><span class="rule"></span></div>
+    <div class="sec-h"><span class="idx">05</span><h2>Manage locations</h2><span class="rule"></span></div>
+    <p class="hint" style="padding-top:0">Add work locations or zones. They'll appear in the location dropdown on every machine. Remove any you don't use.</p>
+    <div class="field" style="margin-bottom:10px">
+      <label>New location</label>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="locMgrName" placeholder="e.g. Zone 7B" style="flex:1">
+        <button class="mini" id="locMgrAdd" style="padding:0 16px;background:var(--hi);color:var(--hi-ink);font-weight:700">Add</button>
+      </div>
+    </div>
+    <div id="locMgrList" style="margin-top:6px"></div>
+  </div>
+  <div class="wrap">
+    <div class="sec-h"><span class="idx">06</span><h2>Data & tools</h2><span class="rule"></span></div>
     <button class="big-btn ghost" id="resetDay">Reset today's tasks</button>
     <button class="big-btn ghost" id="exportData">Export all data (backup)</button>
     <button class="big-btn ghost" id="wipeAll" style="border-color:#5a2a26;color:#e2483d">Wipe everything & reload fleet</button>
@@ -364,6 +376,13 @@ const SEED_PLANT = [{"cat":"180's","type":180,"plant":"3CX48","op":"Leroy Tuitt"
 const OPERATOR_POOLS = {"180's":["Leroy Tuitt"],"360 Tracked":["Alan Anderson","Craig Griffiths","Damian Suchta","Gheorghe Miron","Gurvinder Singh","Jake Mackenzie","James Attrill","James Ferry","John Langley","Levi Taylor Wilson","Lukas Kowalski","Octavia","Paulius Simkunas","Richard Fox","Sean Postlethwaite","Stephen Magi","Timothy Bekett"],"Dozer/Grader":["Gary Oldroyd","Girts Platacis","Gordan Jackson","Justin Shreeve","Kevin Taylor","Micheal Monaghan","Mick Mawson","Steven Tierney"],"Dump Trucks/Hydreamer":["Aiden McElroy","Alex Thurling","Andrew Berry","Brendan McElroy","Curtis Bowles","Darren Nunn","Dimitrian Arsenii","Florinel Stuparu","Girts Platacis","Harjinder Kang","Ion Onica","James Ball","John McElroy","Justin Shreeve","Kenneth Odo","Kyle Wakeman Brotherhood","Mark Cruickshank","Micheal Monaghan","Mike Hardee","Mike Holloway","Nicolae Jitcu","Onka Singh","Paul Lamen","Phil Harold","Rhys Phillips","Shane Lanley","Simon Felton","Uchenna Odoputa"],"Rollers":["Kyle Ward","Nyameke Armah","Paul Frith","Ramandip Singh"],"Tractor & Bowsers":["Girts Platacis","Justin Shreeve","Marius Martinaitis","Micheal Monaghan","Phil Owens"],"Telehandler":["Chimezie Okolo","Jack Meacey","Justin Shreeve","Micheal Monaghan","Steven Tierney"]};
 
 const LOCATIONS = ["Northern Mound","Crushing Yard","Old Crush Yard","Stone Yard","Stone Stockpile","Bentonite Pad","Dust Suppression","Site Wide","North of Zone 1","TCA","Zone 2","Zone 4","Zone 9","1A","1.1","1.2","2.1","2.2","2.3","3A","4","4A","4B","5A","6","6A","6B","9A","9B","SSSI South","MBIF","Stockpile 1"];
+// working locations = base list + any the user has added, minus any removed
+function locList(){
+  const custom=(state && state.customLocs)||[];
+  const removed=(state && state.removedLocs)||[];
+  const all=LOCATIONS.concat(custom.filter(l=>!LOCATIONS.includes(l)));
+  return all.filter(l=>!removed.includes(l));
+}
 const CATS = ["180's","360 Tracked","Material Handler","Dozer/Grader","Dump Trucks/Hydreamer","Rollers","Tractor & Bowsers","Telehandler"];
 const CAT_LABEL = {"180's":"3CX / 180","360 Tracked":"360 Excavators","Dozer/Grader":"Dozers","Dump Trucks/Hydreamer":"ADTs","Rollers":"Rollers","Tractor & Bowsers":"Tractors & Bowsers","Telehandler":"Telehandlers","Material Handler":"Material Handlers"};
 const TYPE_TAG = t => ({180:"3CX",360:"360",Dozer:"DOZ",ADT:"ADT",Roller:"ROLL",Tractor:"TRAC",Telehandler:"TELE",MatHandler:"MH"}[t]||String(t));
@@ -398,7 +417,7 @@ function freshFromSeed(){
     lolerExp:"",
     notes:""
   }));
-  return {plant:rows, group:"Weekday", shift:"07:00", day:todayISO(), customOps:{}, reportEmail:""};
+  return {plant:rows, group:"Weekday", shift:"07:00", day:todayISO(), customOps:{}, reportEmail:"", customLocs:[], removedLocs:[]};
 }
 function load(){
   try{
@@ -411,6 +430,8 @@ function migrateDay(s){
   // ensure fields exist for data saved before they were added
   if(!s.customOps) s.customOps={};
   if(s.reportEmail===undefined) s.reportEmail="";
+  if(!s.customLocs) s.customLocs=[];
+  if(!s.removedLocs) s.removedLocs=[];
   s.plant.forEach(p=>{ if(p.defaultOp===undefined) p.defaultOp=p.operator||""; });
   // if stored day isn't today, roll over: clear tasks, reset status, restore usual operator
   if(s.day!==todayISO()){
@@ -514,7 +535,7 @@ function cardFor(p){
   const locField=el("div","field");
   locField.innerHTML=`<label>Working location</label>`;
   const sel=el("select");
-  LOCATIONS.forEach(L=>{ const o=el("option",null,L); o.value=L; if(L===p.loc)o.selected=true; sel.appendChild(o); });
+  locList().forEach(L=>{ const o=el("option",null,L); o.value=L; if(L===p.loc)o.selected=true; sel.appendChild(o); });
   if(!LOCATIONS.includes(p.loc) && p.loc){ const o=el("option",null,p.loc); o.value=p.loc; o.selected=true; sel.insertBefore(o,sel.firstChild); }
   sel.addEventListener("change",()=>{ p.loc=sel.value; save(); renderFleet(); });
   locField.appendChild(sel);
@@ -786,6 +807,40 @@ function emailReport(){
   setTimeout(()=>{ window.location.href=url; }, 350);
 }
 
+/* ============ MANAGE LOCATIONS ============ */
+function renderLocMgr(){
+  const list=document.getElementById("locMgrList");
+  if(!list) return;
+  list.innerHTML="";
+  const custom=(state.customLocs||[]);
+  const all=locList();
+  all.forEach(L=>{
+    const isCustom=custom.includes(L);
+    const row=el("div"); row.style.cssText="display:flex;align-items:center;gap:10px;padding:9px 11px;background:var(--panel);border:1px solid var(--line);border-radius:8px;margin-bottom:7px";
+    row.innerHTML=`<span style="flex:1;font-size:14px">${L}${isCustom?' <span style="color:var(--hi);font-size:11px">· added</span>':''}</span>`;
+    const del=el("button","mini","Remove");
+    del.addEventListener("click",()=>{
+      if(isCustom){ state.customLocs=custom.filter(x=>x!==L); }
+      else{ state.removedLocs=state.removedLocs||[]; state.removedLocs.push(L); }
+      save(); renderLocMgr(); renderFleet();
+    });
+    row.appendChild(del);
+    list.appendChild(row);
+  });
+}
+function addCustomLoc(){
+  const nameIn=document.getElementById("locMgrName");
+  const nm=(nameIn.value||"").trim();
+  if(!nm){ toast("Type a location first"); return; }
+  if(locList().map(x=>x.toLowerCase()).includes(nm.toLowerCase())){ toast(nm+" already exists"); return; }
+  state.customLocs=state.customLocs||[];
+  state.customLocs.push(nm);
+  if(state.removedLocs) state.removedLocs=state.removedLocs.filter(x=>x!==nm);
+  nameIn.value="";
+  save(); renderLocMgr(); renderFleet();
+  toast(nm+" added to locations");
+}
+
 /* ============ NAV ============ */
 function show(view){
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("on"));
@@ -793,7 +848,7 @@ function show(view){
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.v===view));
   if(view==="message")renderMessage();
   if(view==="report")renderReportBuild();
-  if(view==="setup")renderOpMgr();
+  if(view==="setup"){ renderOpMgr(); renderLocMgr(); }
   window.scrollTo(0,0);
 }
 
@@ -806,6 +861,8 @@ document.getElementById("emailReport").addEventListener("click",emailReport);
 document.getElementById("opMgrAdd").addEventListener("click",addCustomOp);
 document.getElementById("opMgrName").addEventListener("keydown",e=>{ if(e.key==="Enter")addCustomOp(); });
 document.getElementById("opMgrType").addEventListener("change",renderOpMgr);
+document.getElementById("locMgrAdd").addEventListener("click",addCustomLoc);
+document.getElementById("locMgrName").addEventListener("keydown",e=>{ if(e.key==="Enter")addCustomLoc(); });
 document.getElementById("genReport").addEventListener("click",()=>{
   const out=buildReport();
   document.getElementById("reportOut").textContent=out;
