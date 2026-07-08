@@ -255,6 +255,7 @@ input[type=date].expired{border-color:var(--stop);color:var(--stop)}
       <span class="count" id="fleetCount"></span>
     </div>
     <div class="chips" id="typeChips"></div>
+    <button class="mini" id="addPlantBtn" style="margin-top:10px;width:100%;padding:11px;background:transparent;border:1px dashed var(--line);color:var(--hi);font-weight:700">+ Add plant</button>
   </div>
   <div class="wrap" id="fleetList" style="margin-top:6px"></div>
 </div>
@@ -386,6 +387,7 @@ function locList(){
 const CATS = ["180's","360 Tracked","Material Handler","Dozer/Grader","Dump Trucks/Hydreamer","Rollers","Tractor & Bowsers","Telehandler"];
 const CAT_LABEL = {"180's":"3CX / 180","360 Tracked":"360 Excavators","Dozer/Grader":"Dozers","Dump Trucks/Hydreamer":"ADTs","Rollers":"Rollers","Tractor & Bowsers":"Tractors & Bowsers","Telehandler":"Telehandlers","Material Handler":"Material Handlers"};
 const TYPE_TAG = t => ({180:"3CX",360:"360",Dozer:"DOZ",ADT:"ADT",Roller:"ROLL",Tractor:"TRAC",Telehandler:"TELE",MatHandler:"MH"}[t]||String(t));
+const TYPE_FOR_CAT = c => ({"180's":180,"360 Tracked":360,"Dozer/Grader":"Dozer","Dump Trucks/Hydreamer":"ADT","Rollers":"Roller","Tractor & Bowsers":"Tractor","Telehandler":"Telehandler","Material Handler":"MatHandler"}[c]||"Other");
 // excavators need lift plan + LOLER; anything lifting needs LOLER
 const NEEDS_COMPLIANCE = c => c==="360 Tracked" || c==="Telehandler" || c==="Material Handler";
 
@@ -599,6 +601,60 @@ function cardFor(p){
     bd.appendChild(el("div","dur",`Waiting on fitter: ${mins} min so far`));
   }
   body.appendChild(bd);
+
+  // ---- edit plant details (number, type, usual operator, delete) ----
+  const editWrap=el("div"); editWrap.style.cssText="border-top:1px dashed var(--line);padding-top:11px;margin-top:2px";
+  const editToggle=el("button","mini","✎ Edit plant details");
+  editToggle.style.cssText="background:transparent;border:1px solid var(--line);color:var(--ink-dim)";
+  const editBox=el("div"); editBox.style.cssText="display:none;flex-direction:column;gap:10px;margin-top:10px";
+  editToggle.addEventListener("click",()=>{ editBox.style.display = editBox.style.display==="none"?"flex":"none"; });
+  // plant number
+  const pnF=el("div","field"); pnF.innerHTML=`<label>Plant number</label>`;
+  const pnIn=el("input"); pnIn.type="text"; pnIn.value=p.plant;
+  pnF.appendChild(pnIn);
+  // type
+  const tyF=el("div","field"); tyF.innerHTML=`<label>Plant type</label>`;
+  const tySel=el("select");
+  CATS.forEach(c=>{ const o=el("option",null,CAT_LABEL[c]||c); o.value=c; if(c===p.cat)o.selected=true; tySel.appendChild(o); });
+  tyF.appendChild(tySel);
+  // usual operator (free text so any name can be set as default)
+  const uoF=el("div","field"); uoF.innerHTML=`<label>Usual operator</label>`;
+  const uoIn=el("input"); uoIn.type="text"; uoIn.value=p.defaultOp||""; uoIn.placeholder="Usual operator name";
+  uoF.appendChild(uoIn);
+  // save + delete row
+  const btnRow=el("div"); btnRow.style.cssText="display:flex;gap:8px";
+  const saveBtn=el("button","mini","Save changes");
+  saveBtn.style.cssText="flex:1;background:var(--hi);color:var(--hi-ink);font-weight:700;padding:10px";
+  saveBtn.addEventListener("click",()=>{
+    const newNum=(pnIn.value||"").trim();
+    if(!newNum){ toast("Plant number can't be blank"); return; }
+    // guard duplicate plant numbers
+    if(newNum!==p.plant && state.plant.some(x=>x.id!==p.id && x.plant.toLowerCase()===newNum.toLowerCase())){ toast(newNum+" already exists"); return; }
+    p.plant=newNum;
+    const newCat=tySel.value;
+    if(newCat!==p.cat){ p.cat=newCat; p.type=TYPE_FOR_CAT(newCat);
+      // reset compliance applicability
+      if(NEEDS_COMPLIANCE(newCat)){ if(p.liftPlan===null)p.liftPlan=false; if(p.loler===null)p.loler=false; }
+      else { p.liftPlan=null; p.loler=null; }
+    }
+    const newDef=(uoIn.value||"").trim();
+    p.defaultOp=newDef;
+    if(!p.operator || p.operator===p.defaultOp) p.operator=newDef;
+    // make sure this operator is selectable in the type's pool
+    if(newDef){ state.customOps[p.cat]=state.customOps[p.cat]||[]; if(!poolFor(p.cat).includes(newDef)) state.customOps[p.cat].push(newDef); }
+    save(); renderFleet(); toast("Plant updated");
+  });
+  const delBtn=el("button","mini","Delete");
+  delBtn.style.cssText="background:var(--stop-bg);color:var(--stop);border:1px solid #5a2a26;font-weight:700;padding:10px 14px";
+  delBtn.addEventListener("click",()=>{
+    if(confirm("Delete "+p.plant+" ("+(p.operator||"no operator")+")? This removes the machine from the fleet.")){
+      state.plant=state.plant.filter(x=>x.id!==p.id); save(); renderFleet(); toast(p.plant+" deleted");
+    }
+  });
+  btnRow.append(saveBtn,delBtn);
+  editBox.append(pnF,tyF,uoF,btnRow);
+  editWrap.append(editToggle,editBox);
+  body.appendChild(editWrap);
 
   card.appendChild(body);
   return card;
@@ -841,6 +897,31 @@ function addCustomLoc(){
   toast(nm+" added to locations");
 }
 
+/* ============ ADD PLANT ============ */
+function addPlant(){
+  const num=prompt("New plant number:");
+  if(num===null) return;
+  const plant=(num||"").trim();
+  if(!plant){ toast("Plant number can't be blank"); return; }
+  if(state.plant.some(x=>x.plant.toLowerCase()===plant.toLowerCase())){ toast(plant+" already exists"); return; }
+  // pick type
+  const list=CATS.map((c,i)=>(i+1)+". "+(CAT_LABEL[c]||c)).join("\n");
+  const pick=prompt("Plant type — enter the number:\n"+list,"2");
+  if(pick===null) return;
+  const idx=parseInt(pick,10)-1;
+  const cat = CATS[idx] || CATS[0];
+  const op=(prompt("Usual operator (optional):","")||"").trim();
+  const rec={ id:"P"+Date.now(), cat:cat, type:TYPE_FOR_CAT(cat), plant:plant,
+    operator:op, defaultOp:op, homeLoc:"", loc:"", task:"", status:"working",
+    downtime:{down:null,fitter:null,up:null},
+    liftPlan: NEEDS_COMPLIANCE(cat)?false:null, liftPlanExp:"",
+    loler: NEEDS_COMPLIANCE(cat)?false:null, lolerExp:"", notes:"", _open:true };
+  state.plant.push(rec);
+  if(op){ state.customOps[cat]=state.customOps[cat]||[]; if(!poolFor(cat).includes(op)) state.customOps[cat].push(op); }
+  save(); renderChips(); renderFleet();
+  toast(plant+" added");
+}
+
 /* ============ NAV ============ */
 function show(view){
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("on"));
@@ -863,6 +944,7 @@ document.getElementById("opMgrName").addEventListener("keydown",e=>{ if(e.key===
 document.getElementById("opMgrType").addEventListener("change",renderOpMgr);
 document.getElementById("locMgrAdd").addEventListener("click",addCustomLoc);
 document.getElementById("locMgrName").addEventListener("keydown",e=>{ if(e.key==="Enter")addCustomLoc(); });
+document.getElementById("addPlantBtn").addEventListener("click",addPlant);
 document.getElementById("genReport").addEventListener("click",()=>{
   const out=buildReport();
   document.getElementById("reportOut").textContent=out;
