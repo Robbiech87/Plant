@@ -252,11 +252,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   </div>
   <div class="daybar">
     <div class="grp">
-      <label>Weekend group</label>
+      <label>Shift day</label>
       <div class="seg" id="grpSeg">
         <button data-g="Weekday" class="on">Weekday</button>
-        <button data-g="Group A">A</button>
-        <button data-g="Group B">B</button>
+        <button data-g="Group A">Wkd — working grp</button>
+        <button data-g="Group B">Wkd — Grp 2</button>
       </div>
     </div>
     <div class="grp" style="margin-left:auto">
@@ -304,6 +304,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       <pre id="msgOut"></pre>
     </div>
     <p class="hint">Copy this and paste it into the SZC plant WhatsApp group. It rebuilds from your allocations every time you open this tab. Auto-send can come later once there's a business WhatsApp number.</p>
+
+    <div class="sec-h" style="margin-top:20px"><span class="idx">⏸</span><h2>Today's breaks</h2><span class="rule"></span></div>
+    <p class="hint" style="padding-top:0">Set who's on which break window — operators and/or zones, one per line. Clears each day. Flows into the message above.</p>
+    <div id="breaksList"></div>
+    <button class="mini" id="addBreakBtn" style="width:100%;padding:11px;margin-top:4px;background:transparent;border:1px dashed var(--line);color:var(--hi);font-weight:700">+ Add break window</button>
   </div>
 </div>
 
@@ -429,8 +434,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
 <script>
 /* ============ SEED DATA (from CWA plant register) ============ */
-const SEED_PLANT = [{"cat":"180's","type":180,"plant":"3CX48","op":"Leroy Tuitt","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EX25TLR11","op":"Gurvinder Singh","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EX25TZ124 GPS","op":"Jake Mackenzie","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EX40T167","op":"Lukas Kowalski","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EX40T157","op":"Richard Fox","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EX40T151","op":"Gheorghe Miron","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EX40T182 GPS","op":"Alan Anderson","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EX40T183 GPS","op":"James Attrill","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EX25T379","op":"Stephen Magi","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EX9T387 GPS","op":"Octavian Bobotrin","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EX987","op":"Timothy Bekett","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EX1042","op":"Paulius Simkunas","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EWK 708","op":"James Ferry","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EWK593","op":"Damian Suchta","loc":"MCA","zone":"MCA"},{"cat":"360 Tracked","type":360,"plant":"EX988","op":"Craig Griffiths","loc":"MCA","zone":"MCA"},{"cat":"Dozer/Grader","type":"Dozer","plant":"DZ6T135 GPS","op":"Kevin Taylor","loc":"MCA","zone":"MCA"},{"cat":"Dozer/Grader","type":"Dozer","plant":"DZ6T91","op":"Gary Oldroyd","loc":"MCA","zone":"MCA"},{"cat":"Dozer/Grader","type":"Dozer","plant":"DZ6T131","op":"Girts Platacis","loc":"MCA","zone":"MCA"},{"cat":"Dozer/Grader","type":"Dozer","plant":"DZ6T122 GPS","op":"Gordon Jackson","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T150","op":"Darren Nunn","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T176","op":"Mike Holloway","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T180","op":"Rhys Phillips","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T186","op":"Uche Odoputa","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T205","op":"Simon Felton","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T207","op":"Paul Lamen","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T211","op":"Curtis Bowles","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T233","op":"Phil Harold","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T234","op":"Nicolae Jitcu","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T235","op":"Mark Cruickshank","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T236","op":"Curtis Bowles","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T239","op":"Andy Berry","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T240","op":"Aidan McElroy","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T65","op":"Mike Hardee","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T70","op":"Brendan McElroy","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T75","op":"Shane Lanley","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T76","op":"Kyle Wakeman Brotherhood","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T78","op":"Kenneth Odo","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T79","op":"Dimitrian Arsenii","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T82","op":"John McElroy","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T83","op":"Ion Onica","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T85","op":"Onkar Singh","loc":"MCA","zone":"MCA"},{"cat":"Rollers","type":"Roller","plant":"RO13T99","op":"Nyameke Armah","loc":"MCA","zone":"MCA"},{"cat":"Rollers","type":"Roller","plant":"RO3T121","op":"Kyle Ward","loc":"MCA","zone":"MCA"},{"cat":"Rollers","type":"Roller","plant":"RO13T121","op":"Paul Frith","loc":"MCA","zone":"MCA"},{"cat":"Tractor & Bowsers","type":"Tractor","plant":"TK68 DB154","op":"Marius Martinaitis","loc":"MCA","zone":"MCA"},{"cat":"Tractor & Bowsers","type":"Tractor","plant":"TK227","op":"Philip Owens","loc":"MCA","zone":"MCA"},{"cat":"Telehandler","type":"Telehandler","plant":"TH17M57","op":"Jack Meacey","loc":"MCA","zone":"MCA"},{"cat":"Telehandler","type":"Telehandler","plant":"TH17M51","op":"Chimezie Okolo","loc":"MCA","zone":"MCA"},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT12T154","op":"Alex Thurling","loc":"MCA","zone":"MCA"},{"cat":"Tractor & Bowsers","type":"Tractor","plant":"JD200","op":"Dean Thompson","loc":"MCA","zone":"MCA"}];
-const OPERATOR_POOLS = {"180's":["Leroy Tuitt"],"360 Tracked":["Alan Anderson","Craig Griffiths","Damian Suchta","Gheorghe Miron","Gurvinder Singh","Jake Mackenzie","James Attrill","James Ferry","John Langley","Levi Taylor Wilson","Lukas Kowalski","Octavia","Octavian Bobotrin","Paulius Simkunas","Richard Fox","Sean Postlethwaite","Stephen Magi","Timothy Bekett"],"Dozer/Grader":["Gary Oldroyd","Girts Platacis","Gordan Jackson","Gordon Jackson","Justin Shreeve","Kevin Taylor","Micheal Monaghan","Mick Mawson","Steven Tierney"],"Dump Trucks/Hydreamer":["Aidan McElroy","Aiden McElroy","Alex Thurling","Andrew Berry","Andy Berry","Brendan McElroy","Curtis Bowles","Darren Nunn","Dimitrian Arsenii","Florinel Stuparu","Girts Platacis","Harjinder Kang","Ion Onica","James Ball","John McElroy","Justin Shreeve","Kenneth Odo","Kyle Wakeman Brotherhood","Mark Cruickshank","Micheal Monaghan","Mike Hardee","Mike Holloway","Nicolae Jitcu","Onka Singh","Onkar Singh","Paul Lamen","Phil Harold","Rhys Phillips","Shane Lanley","Simon Felton","Uche Odoputa","Uchenna Odoputa"],"Rollers":["Kyle Ward","Nyameke Armah","Paul Frith","Ramandip Singh"],"Tractor & Bowsers":["Dean Thompson","Girts Platacis","Justin Shreeve","Marius Martinaitis","Micheal Monaghan","Philip Owens"],"Telehandler":["Chimezie Okolo","Jack Meacey","Justin Shreeve","Micheal Monaghan","Steven Tierney"]};
+const SEED_PLANT = [{"cat":"Dozer/Grader","type":"Dozer","plant":"DZ6T131","op":"Mick Mawson","loc":"MCA","zone":"MCA","g2":false},{"cat":"Dozer/Grader","type":"Dozer","plant":"DZ6T157","op":"Gary Oldroyd","loc":"MCA","zone":"MCA","g2":true},{"cat":"Dozer/Grader","type":"Dozer","plant":"DZ6T135","op":"Kevin Taylor","loc":"MCA","zone":"MCA","g2":true},{"cat":"Dozer/Grader","type":"Dozer","plant":"DZ6T122","op":"Gordon Jackson","loc":"MCA","zone":"MCA","g2":false},{"cat":"360 Tracked","type":360,"plant":"EX25TLR11","op":"Gurvinder Singh","loc":"MCA","zone":"MCA","g2":false},{"cat":"360 Tracked","type":360,"plant":"EX25TZ124","op":"Jake Mackenzie","loc":"MCA","zone":"MCA","g2":true},{"cat":"360 Tracked","type":360,"plant":"EX40T167","op":"Lukas Kowalski","loc":"MCA","zone":"MCA","g2":false},{"cat":"360 Tracked","type":360,"plant":"EX40T157","op":"Richard Fox","loc":"MCA","zone":"MCA","g2":true},{"cat":"360 Tracked","type":360,"plant":"EX40T173","op":"Gheorghe Miron","loc":"MCA","zone":"MCA","g2":true},{"cat":"360 Tracked","type":360,"plant":"EX40T182","op":"Alan Anderson","loc":"MCA","zone":"MCA","g2":false},{"cat":"360 Tracked","type":360,"plant":"EX40T183","op":"James Attrill","loc":"MCA","zone":"MCA","g2":false},{"cat":"360 Tracked","type":360,"plant":"EX25T379","op":"Stephen Magi","loc":"MCA","zone":"MCA","g2":true},{"cat":"360 Tracked","type":360,"plant":"EX9T387","op":"Octavian Bobotrin","loc":"MCA","zone":"MCA","g2":false},{"cat":"360 Tracked","type":360,"plant":"EX987","op":"Sean Postlethwaite","loc":"MCA","zone":"MCA","g2":true},{"cat":"360 Tracked","type":360,"plant":"EX1042","op":"Paulius Simkunas","loc":"MCA","zone":"MCA","g2":true},{"cat":"360 Tracked","type":360,"plant":"EWK 708","op":"James Ferry","loc":"MCA","zone":"MCA","g2":true},{"cat":"360 Tracked","type":360,"plant":"X-BBF-B25ET2","op":"Damian Suchta","loc":"MCA","zone":"MCA","g2":true},{"cat":"360 Tracked","type":360,"plant":"EX988","op":"Craig Griffiths","loc":"MCA","zone":"MCA","g2":false},{"cat":"Rollers","type":"Roller","plant":"RO13T121","op":"Paul Frith","loc":"MCA","zone":"MCA","g2":false},{"cat":"Rollers","type":"Roller","plant":"RO13T99","op":"Nyameke Armah","loc":"MCA","zone":"MCA","g2":true},{"cat":"Rollers","type":"Roller","plant":"RO3T121","op":"Dave Mower","loc":"MCA","zone":"MCA","g2":true},{"cat":"Tractor & Bowsers","type":"Tractor","plant":"TK68","op":"Marius Martinaitis","loc":"MCA","zone":"MCA","g2":true},{"cat":"Tractor & Bowsers","type":"Tractor","plant":"TK227","op":"Mike Holloway","loc":"MCA","zone":"MCA","g2":false},{"cat":"Tractor & Bowsers","type":"Tractor","plant":"TK167","op":"Piotr Saczek","loc":"MCA","zone":"MCA","g2":true},{"cat":"Tractor & Bowsers","type":"Tractor","plant":"JD201","op":"Harrison Brown","loc":"MCA","zone":"MCA","g2":true},{"cat":"Tractor & Bowsers","type":"Tractor","plant":"JD200","op":"Albert Savill","loc":"MCA","zone":"MCA","g2":true},{"cat":"Telehandler","type":"Telehandler","plant":"TH17M57","op":"Jack Meacey","loc":"MCA","zone":"MCA","g2":true},{"cat":"Telehandler","type":"Telehandler","plant":"TH17M51","op":"Chimezie Okolo","loc":"MCA","zone":"MCA","g2":false},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T176","op":"David Hart","loc":"MCA","zone":"MCA","g2":false},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T180","op":"Rhys Phillips","loc":"MCA","zone":"MCA","g2":false},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T186","op":"Matthew Dunning","loc":"MCA","zone":"MCA","g2":true},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T233","op":"Phil Harold","loc":"MCA","zone":"MCA","g2":true},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T234","op":"Nicolae Jitcu","loc":"MCA","zone":"MCA","g2":false},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T235","op":"Mark Cruickshank","loc":"MCA","zone":"MCA","g2":false},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T236","op":"Alex Thurling","loc":"MCA","zone":"MCA","g2":false},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T239","op":"Kamaljit Singh","loc":"MCA","zone":"MCA","g2":false},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T240","op":"Aidan McElroy","loc":"MCA","zone":"MCA","g2":true},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T150","op":"Darren Nunn","loc":"MCA","zone":"MCA","g2":false},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T211","op":"Curtis Bowles","loc":"MCA","zone":"MCA","g2":false},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T207","op":"Richard Lucas","loc":"MCA","zone":"MCA","g2":false},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT30T205","op":"Simon Felton","loc":"MCA","zone":"MCA","g2":false},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T65","op":"Mike Hardee","loc":"MCA","zone":"MCA","g2":true},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T70","op":"Brendan McElroy","loc":"MCA","zone":"MCA","g2":true},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T75","op":"Shane Langley","loc":"MCA","zone":"MCA","g2":true},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T76","op":"Nathan Davies","loc":"MCA","zone":"MCA","g2":true},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T78","op":"Kenneth Odo","loc":"MCA","zone":"MCA","g2":true},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T79","op":"Dimitrian Arsenii","loc":"MCA","zone":"MCA","g2":true},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T83","op":"Ion Onica","loc":"MCA","zone":"MCA","g2":false},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T85","op":"Onkar Singh","loc":"MCA","zone":"MCA","g2":false},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T82","op":"John McElroy","loc":"MCA","zone":"MCA","g2":true},{"cat":"Dump Trucks/Hydreamer","type":"ADT","plant":"DT45T68","op":"Florinel Stuparu","loc":"MCA","zone":"MCA","g2":false},{"cat":"180's","type":180,"plant":"3CX48","op":"Leroy Tuitt","loc":"MCA","zone":"MCA","g2":true}];
+const OPERATOR_POOLS = {"Dozer/Grader":["Alan Anderson","Finlay Grant","Gary Oldroyd","Girts Platacis","Gordon Jackson","Jay Shreeve","Kevin Dawson","Kevin Taylor","Mick Mawson","Paul Kavanagh","Steve Tierney"],"360 Tracked":["Alan Anderson","Barry Muldoon","Cosmin Arghir","Craig Griffiths","Damian Suchta","Gheorghe Miron","Grzegorz Ziebinski","Gurvinder Singh","Harjap Birring","Jake Mackenzie","James Attrill","James Ferry","James McCafferty","Jay Shreeve","Kyle Ward","Levi Taylor-Wilson","Lukas Kowalski","Octavian Bobotrin","Paulius Simkunas","Richard Fox","Sean Postlethwaite","Stephen Magi"],"Rollers":["Brendan McElroy","Dave Mower","Jay Shreeve","Kyle Ward","Nyameke Armah","Paul Frith","Ramandip Singh","Richard Davies","Shane Langley"],"Tractor & Bowsers":["Albert Savill","Harrison Brown","Jay Shreeve","John Coleman","Kyle Ward","Marius Martinaitis","Mike Holloway","Piotr Saczek","Richard Davies"],"Telehandler":["Chimezie Okolo","Jack Meacey","Jay Shreeve","Kyle Ward","Mick Monaghan","Piotr Saczek"],"Dump Trucks/Hydreamer":["Aidan McElroy","Alex Thurling","Barry Muldoon","Brendan McElroy","Curtis Bowles","Darren Nunn","David Hart","Dimitrian Arsenii","Florinel Stuparu","Grzegorz Ziebinski","Ion Onica","Jason Wright","Jay Shreeve","John Coleman","John McElroy","Kamaljit Singh","Kamil Buzowicz","Kenneth Odo","Kyle Wakeman-Brotherhood","Kyle Ward","Mark Cruickshank","Matthew Dunning","Mike Hardee","Nathan Davies","Nicolae Jitcu","Oliver Shelby","Onkar Singh","Patrick Meehan","Phil Harold","Rhys Phillips","Richard Lucas","Richard Williams","Robert Mills","Roman Montana","Sean McElroy","Shane Langley","Simon Felton","Wiktor Kuchier"],"180's":["Leroy Tuitt"]};
+const OP_GROUPS = {"Mick Mawson":"Group A","Gary Oldroyd":"Group B","Kevin Taylor":"Group B","Gordon Jackson":"Group A","Gurvinder Singh":"Group A","Jake Mackenzie":"Group B","Lukas Kowalski":"Group A","Richard Fox":"Group B","Gheorghe Miron":"Group B","Alan Anderson":"Group A","James Attrill":"Group A","Stephen Magi":"Group B","Octavian Bobotrin":"Group A","Sean Postlethwaite":"Group B","Paulius Simkunas":"Group B","James Ferry":"Group B","Damian Suchta":"Group B","Craig Griffiths":"Group A","Paul Frith":"Group A","Nyameke Armah":"Group B","Dave Mower":"Group B","Marius Martinaitis":"Group B","Mike Holloway":"Group A","Piotr Saczek":"Group B","Harrison Brown":"Group B","Albert Savill":"Group B","Jack Meacey":"Group B","Chimezie Okolo":"Group A","David Hart":"Group A","Rhys Phillips":"Group A","Matthew Dunning":"Group B","Phil Harold":"Group B","Nicolae Jitcu":"Group A","Mark Cruickshank":"Group A","Alex Thurling":"Group A","Kamaljit Singh":"Group A","Aidan McElroy":"Group B","Darren Nunn":"Group A","Curtis Bowles":"Group A","Richard Lucas":"Group A","Simon Felton":"Group A","Mike Hardee":"Group B","Brendan McElroy":"Group B","Shane Langley":"Group B","Nathan Davies":"Group B","Kenneth Odo":"Group B","Dimitrian Arsenii":"Group B","Ion Onica":"Group A","Onkar Singh":"Group A","John McElroy":"Group B","Florinel Stuparu":"Group A","Leroy Tuitt":"Group B"};
 
 const LOCATIONS = ["Northern Mound","Crushing Yard","Old Crush Yard","Stone Yard","Stone Stockpile","Bentonite Pad","Dust Suppression","Site Wide","North of Zone 1","TCA","Zone 2","Zone 4","Zone 9","1A","1.1","1.2","2.1","2.2","2.3","3A","4","4A","4B","5A","6","6A","6B","9A","9B","SSSI South","MBIF","Stockpile 1"];
 // working locations = base list + any the user has added, minus any removed
@@ -461,13 +467,13 @@ function poolFor(cat){
 }
 
 /* ============ STATE ============ */
-const LS_KEY = "szc_plant_v6";
+const LS_KEY = "szc_plant_v7";
 let state = load();
 
 function freshFromSeed(){
   const rows = SEED_PLANT.map((p,i)=>({
     id:"P"+i,
-    cat:p.cat, type:p.type, plant:p.plant,
+    cat:p.cat, type:p.type, plant:p.plant, g2:!!p.g2,
     operator:p.op||"", defaultOp:p.op||"", homeLoc:p.loc||"",
     // daily/live fields
     loc:p.loc||"", task:"", status:"working",
@@ -479,7 +485,7 @@ function freshFromSeed(){
     lolerExp:"",
     notes:""
   }));
-  return {plant:rows, group:"Weekday", shift:"07:00", day:todayISO(), customOps:{}, reportEmail:"", customLocs:[], removedLocs:[], tour:defaultTour()};
+  return {plant:rows, group:"Weekday", shift:"07:00", day:todayISO(), customOps:{}, reportEmail:"", customLocs:[], removedLocs:[], tour:defaultTour(), breaks:defaultBreaks()};
 }
 function load(){
   try{
@@ -495,10 +501,14 @@ function migrateDay(s){
   if(!s.customLocs) s.customLocs=[];
   if(!s.removedLocs) s.removedLocs=[];
   if(!s.tour) s.tour=defaultTour();
+  if(!s.breaks) s.breaks=defaultBreaks();
+  // reset breaks daily (they change every day)
+  if(s.day!==todayISO()){ /* handled below in the day-rollover block */ }
   s.plant.forEach(p=>{ if(p.defaultOp===undefined) p.defaultOp=p.operator||""; });
   // if stored day isn't today, roll over: clear tasks, reset status, restore usual operator
   if(s.day!==todayISO()){
     s.plant.forEach(p=>{ p.task=""; p.status="working"; p.operator=p.defaultOp; p.downtime={down:null,fitter:null,up:null}; });
+    s.breaks=defaultBreaks();
     s.day=todayISO();
   }
   return s;
@@ -779,7 +789,7 @@ function buildMessage(){
   lines.push(`Shift start ${state.shift}${state.group!=="Weekday"?" · "+state.group:""}`);
   lines.push("");
   CATS.forEach(cat=>{
-    const rows=state.plant.filter(p=>p.cat===cat && p.status!=="down" && p.status!=="dayoff");
+    const rows=state.plant.filter(p=>p.cat===cat && p.status!=="down" && p.status!=="dayoff" && weekendOK(p));
     if(!rows.length) return;
     lines.push(`*${CAT_LABEL[cat]}*`);
     rows.forEach(p=>{
@@ -795,6 +805,15 @@ function buildMessage(){
     lines.push("");
   }
   lines.push(`Total working: ${state.plant.filter(p=>p.status==="working").length}`);
+  // breaks block
+  const bw=(state.breaks&&state.breaks.windows||[]).filter(w=>w.time&&w.who.trim());
+  if(bw.length){
+    lines.push(""); lines.push("*BREAKS*");
+    bw.forEach(w=>{
+      lines.push(""); lines.push(`*${w.time}*`);
+      w.who.split("\n").map(s=>s.trim()).filter(Boolean).forEach(n=>lines.push(n));
+    });
+  }
   return lines.join("\n").trim();
 }
 function renderMessage(){ document.getElementById("msgOut").textContent=buildMessage(); }
@@ -983,7 +1002,41 @@ function addPlant(){
   toast(plant+" added");
 }
 
-/* ============ SAFETY TOUR LOGIC ============ */
+/* ============ BREAKS ============ */
+function defaultBreaks(){
+  return { windows:[ {time:"12:00-13:00", who:""}, {time:"13:00-14:00", who:""} ] };
+}
+function renderBreaks(){
+  const wrap=document.getElementById("breaksList"); if(!wrap) return;
+  wrap.innerHTML="";
+  state.breaks.windows.forEach((w,i)=>{
+    const box=el("div","tour-act");
+    const tf=el("div","field",`<label>Break window</label>`); tf.style.marginBottom="8px";
+    const ti=document.createElement("input"); ti.type="text"; ti.value=w.time; ti.placeholder="e.g. 12:00-13:00";
+    ti.addEventListener("input",()=>{ w.time=ti.value; }); ti.addEventListener("blur",save);
+    tf.appendChild(ti); box.appendChild(tf);
+    const wf=el("div","field",`<label>On this break (operators and/or zones — one per line)</label>`);
+    const wt=document.createElement("textarea"); wt.value=w.who; wt.rows=4;
+    wt.placeholder="John\nBrendan\nZone 4A\nCrushyard";
+    wt.addEventListener("input",()=>{ w.who=wt.value; }); wt.addEventListener("blur",save);
+    wf.appendChild(wt); box.appendChild(wf);
+    const del=el("button","mini","Remove window");
+    del.style.cssText="background:var(--stop-bg);color:var(--stop);border:1px solid #5a2a26;font-weight:700;margin-top:4px";
+    del.addEventListener("click",()=>{ state.breaks.windows.splice(i,1); save(); renderBreaks(); });
+    box.appendChild(del);
+    wrap.appendChild(box);
+  });
+}
+function addBreakWindow(){ state.breaks.windows.push({time:"",who:""}); save(); renderBreaks(); }
+
+// weekend filter: Weekday shows all; "Group A" = this weekend's working group (non-Group2);
+// "Group B" = Group 2's weekend (only Group 2 machines)
+function weekendOK(p){
+  if(state.group==="Group A") return !p.g2;   // working group on = hide Group 2
+  if(state.group==="Group B") return !!p.g2;  // Group 2 weekend = only Group 2
+  return true;                                 // Weekday
+}
+
 function tourDateGB(){ const d=new Date(); return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear(); }
 function defaultTour(){
   return {
@@ -1123,7 +1176,7 @@ function show(view){
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("on"));
   document.getElementById("v-"+view).classList.add("on");
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.v===view));
-  if(view==="message")renderMessage();
+  if(view==="message"){ renderMessage(); renderBreaks(); }
   if(view==="report")renderReportBuild();
   if(view==="setup"){ renderOpMgr(); renderLocMgr(); }
   if(view==="safety") renderTour();
@@ -1145,6 +1198,7 @@ document.getElementById("addPlantBtn").addEventListener("click",addPlant);
 document.getElementById("tourAllGood").addEventListener("click",tourAllGood);
 document.getElementById("tourAddAct").addEventListener("click",tourAddAction);
 document.getElementById("tourGen").addEventListener("click",generateTourDoc);
+document.getElementById("addBreakBtn").addEventListener("click",addBreakWindow);
 document.getElementById("genReport").addEventListener("click",()=>{
   const out=buildReport();
   document.getElementById("reportOut").textContent=out;
@@ -1173,7 +1227,7 @@ try{
     +'<h2 style="color:#ffb200;margin-bottom:12px">Couldn\'t start</h2>'
     +'<p style="line-height:1.6;color:#9aa0aa">The app hit an error loading on this device. Send this line to Claude and it\'ll fix it:</p>'
     +'<pre style="margin-top:14px;padding:12px;background:#23262c;border-radius:8px;color:#e2483d;white-space:pre-wrap;font-size:12px">'+(err&&err.message?err.message:err)+'</pre>'
-    +'<button onclick="try{localStorage.removeItem(\'szc_plant_v6\');location.reload()}catch(e){location.reload()}" style="margin-top:16px;background:#ffb200;color:#141518;font-weight:700;border:none;padding:12px 18px;border-radius:8px">Reset & reload</button>'
+    +'<button onclick="try{localStorage.removeItem(\'szc_plant_v7\');location.reload()}catch(e){location.reload()}" style="margin-top:16px;background:#ffb200;color:#141518;font-weight:700;border:none;padding:12px 18px;border-radius:8px">Reset & reload</button>'
     +'</div>';
 }
 </script>
