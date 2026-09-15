@@ -97,6 +97,19 @@ input,select,textarea{font-family:inherit;font-size:15px}
 .loc-tag{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:11px;
   background:var(--panel2);border:1px solid var(--line);padding:2px 7px;border-radius:5px;color:var(--ink)}
 .badges{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.sup-tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;
+  background:#15212e;border:1px solid #2b4560;padding:2px 7px;border-radius:5px;color:#8fc1ee}
+.sup-tag.none{background:transparent;border:1px dashed var(--line);color:var(--ink-faint);font-weight:600}
+.sup-row{display:flex;align-items:center;gap:10px;padding:9px 11px;background:var(--panel);border:1px solid var(--line);border-radius:8px;margin-bottom:7px}
+.sup-row.unset{border-left:3px solid var(--caution)}
+.sup-row .sl{flex:1;min-width:0}
+.sup-row .sl b{display:block;font-size:14px}
+.sup-row .sl span{font-size:11px;color:var(--ink-faint);font-family:var(--mono)}
+.sup-row select{max-width:46%}
+.sup-sum{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--steel);border-radius:8px;padding:10px 12px;margin-bottom:7px}
+.sup-sum b{color:#8fc1ee;font-size:14px}
+.sup-sum .z{font-size:11.5px;color:var(--ink-dim);margin-top:2px}
+.sup-sum .pl{font-family:var(--mono);font-size:11.5px;color:var(--ink);margin-top:4px;line-height:1.5}
 .dot{width:9px;height:9px;border-radius:50%;flex:none}
 .dot.go{background:var(--go)} .dot.stop{background:var(--stop)} .dot.caution{background:var(--caution)}
 .pill{font-size:10px;font-weight:700;padding:3px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
@@ -312,6 +325,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     </div>
     <p class="hint">Copy this and paste it into the SZC plant WhatsApp group. It rebuilds from your allocations every time you open this tab. Auto-send can come later once there's a business WhatsApp number.</p>
 
+    <div class="sec-h" style="margin-top:20px"><span class="idx">👷</span><h2>Area supervisors</h2><span class="rule"></span><span class="count" id="supCount"></span></div>
+    <p class="hint" style="padding-top:0">Pick who's looking after each area being worked. Every machine in that area shows who to report to, and it goes into the message above. Picks stay until you change them. A main zone (e.g. Zone 5) also covers its sub-zones (5A) unless you set those separately.</p>
+    <div id="supAreas"></div>
+    <div id="supSummary" style="margin-top:12px"></div>
+
     <div class="sec-h" style="margin-top:20px"><span class="idx">⏸</span><h2>Today's breaks</h2><span class="rule"></span></div>
     <p class="hint" style="padding-top:0">Set who's on which break window — operators and/or zones, one per line. Clears each day. Flows into the message above.</p>
     <div id="breaksList"></div>
@@ -390,7 +408,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     <div id="locMgrList" style="margin-top:6px"></div>
   </div>
   <div class="wrap">
-    <div class="sec-h"><span class="idx">06</span><h2>Data & tools</h2><span class="rule"></span></div>
+    <div class="sec-h"><span class="idx">06</span><h2>Manage supervisors</h2><span class="rule"></span></div>
+    <p class="hint" style="padding-top:0">The supervisors you can pick for each area on the Briefing tab.</p>
+    <div class="field" style="margin-bottom:10px">
+      <label>New supervisor</label>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="supMgrName" placeholder="e.g. Simon" style="flex:1">
+        <button class="mini" id="supMgrAdd" style="padding:0 16px;background:var(--hi);color:var(--hi-ink);font-weight:700">Add</button>
+      </div>
+    </div>
+    <div id="supMgrList" style="margin-top:6px"></div>
+  </div>
+  <div class="wrap">
+    <div class="sec-h"><span class="idx">07</span><h2>Data & tools</h2><span class="rule"></span></div>
     <button class="big-btn ghost" id="resetDay">Reset today's tasks</button>
     <button class="big-btn ghost" id="exportData">Export all data (backup)</button>
     <button class="big-btn ghost" id="wipeAll" style="border-color:#5a2a26;color:#e2483d">Wipe everything & reload fleet</button>
@@ -482,6 +512,10 @@ function poolFor(cat){
 }
 
 /* ============ STATE ============ */
+const DEFAULT_SUPERVISORS = ["Robbie","Simon","Florin","Mo","Sam","Barry","Jake","Peter","Lee","Paulo","John","Anthony","Mark"];
+// supervisors added in later updates — merged into existing saved lists once (so removed names stay removed)
+const SUP_ADDITIONS = [ {v:2, names:["Lee","Paulo","John","Anthony","Mark"]} ];
+const SUP_LIST_VERSION = 2;
 const LS_KEY = "szc_plant_v9";
 let state = load();
 
@@ -500,7 +534,7 @@ function freshFromSeed(){
     lolerExp:"",
     notes:""
   }));
-  return {plant:rows, group:"Weekday", shift:"07:00", day:todayISO(), planOffset:0, customOps:{}, reportEmail:"", customLocs:[], removedLocs:[], tour:defaultTour(), breaks:defaultBreaks()};
+  return {plant:rows, group:"Weekday", shift:"07:00", day:todayISO(), planOffset:0, customOps:{}, reportEmail:"", customLocs:[], removedLocs:[], tour:defaultTour(), breaks:defaultBreaks(), supervisors:DEFAULT_SUPERVISORS.slice(), supListV:SUP_LIST_VERSION, areaSup:{}};
 }
 function load(){
   try{
@@ -534,6 +568,15 @@ function migrateDay(s){
   if(!s.removedLocs) s.removedLocs=[];
   if(!s.tour) s.tour=defaultTour();
   if(!s.breaks) s.breaks=defaultBreaks();
+  if(!s.supervisors){ s.supervisors=DEFAULT_SUPERVISORS.slice(); s.supListV=SUP_LIST_VERSION; }
+  if(!s.supListV) s.supListV=1;
+  SUP_ADDITIONS.forEach(function(add){
+    if(s.supListV<add.v){
+      add.names.forEach(function(n){ if(s.supervisors.indexOf(n)<0) s.supervisors.push(n); });
+    }
+  });
+  s.supListV=SUP_LIST_VERSION;
+  if(!s.areaSup) s.areaSup={};
   if(s.planOffset===undefined) s.planOffset=0;
   s.plant.forEach(p=>{ if(p.defaultOp===undefined) p.defaultOp=p.operator||""; });
 
@@ -591,6 +634,120 @@ function certState(p){
   return worst;
 }
 
+/* ============ SUPERVISORS ============ */
+// "Zone 5A" / "Zone 5.1" -> "Zone 5"; anything else -> null
+function parentZone(loc){
+  const m=/^(Zone \d+)[^\d]/.exec(loc||"");
+  return m? m[1] : null;
+}
+// supervisor for an area: exact pick first, then the main zone's pick
+function areaSupFor(loc){
+  if(!loc) return "";
+  const map=state.areaSup||{};
+  if(map[loc]) return map[loc];
+  const pz=parentZone(loc);
+  return (pz && map[pz]) ? map[pz] : "";
+}
+// supervisor for a machine: its own override, else its area's supervisor
+function supFor(p){ return p.sup || areaSupFor(p.loc); }
+function onShift(p){ return p.status!=="dayoff" && weekendOK(p); }
+function supNames(){ return (state.supervisors||[]).slice(); }
+function supSelect(current,blankLabel,onPick){
+  const s=el("select");
+  const b=el("option",null,blankLabel); b.value=""; s.appendChild(b);
+  const names=supNames();
+  if(current && names.indexOf(current)<0) names.push(current);
+  names.forEach(n=>{ const o=el("option",null,n); o.value=n; if(n===current)o.selected=true; s.appendChild(o); });
+  s.addEventListener("change",()=>onPick(s.value));
+  return s;
+}
+function renderSupAreas(){
+  const wrap=document.getElementById("supAreas"); if(!wrap) return;
+  wrap.innerHTML="";
+  // areas that have machines on shift today
+  const byLoc={};
+  state.plant.filter(onShift).forEach(p=>{ const k=p.loc||""; if(!k) return; (byLoc[k]=byLoc[k]||[]).push(p); });
+  const locs=Object.keys(byLoc).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  let unset=0;
+  if(!locs.length){ wrap.appendChild(el("div","hint","No machines have a location yet.")); }
+  locs.forEach(L=>{
+    const own=(state.areaSup||{})[L]||"";
+    const inherited=own? "" : areaSupFor(L);
+    if(!own && !inherited) unset++;
+    const row=el("div","sup-row"+(own||inherited?"":" unset"));
+    const n=byLoc[L].length;
+    const sub = inherited ? ("via "+parentZone(L)+" · "+inherited) : (n+" machine"+(n>1?"s":""));
+    row.appendChild(el("div","sl",`<b>${L}</b><span>${sub}</span>`));
+    row.appendChild(supSelect(own, inherited? "— same as "+parentZone(L)+" —" : "— pick —", v=>{
+      if(v) state.areaSup[L]=v; else delete state.areaSup[L];
+      save(); renderSupAreas(); renderMessage(); renderFleet();
+    }));
+    wrap.appendChild(row);
+  });
+  const c=document.getElementById("supCount");
+  if(c){ c.textContent = unset? unset+" unset" : (locs.length? "all set" : ""); c.style.color = unset? "var(--caution)" : "var(--go)"; }
+  renderSupSummary();
+}
+function supGroups(){
+  // { supervisor: {areas:[...], plant:[...]} } for machines on shift, plus unassigned list
+  const g={}; const none=[];
+  state.plant.filter(p=>onShift(p) && p.status!=="down").forEach(p=>{
+    const s=supFor(p);
+    if(!s){ none.push(p); return; }
+    if(!g[s]) g[s]={areas:[],plant:[]};
+    g[s].plant.push(p);
+    const a=p.loc||"TBC";
+    if(g[s].areas.indexOf(a)<0) g[s].areas.push(a);
+  });
+  Object.keys(g).forEach(k=>g[k].areas.sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})));
+  return {g:g, none:none};
+}
+function supOrder(g){
+  const names=supNames();
+  return Object.keys(g).sort((a,b)=>{ const ia=names.indexOf(a), ib=names.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib); });
+}
+function renderSupSummary(){
+  const wrap=document.getElementById("supSummary"); if(!wrap) return;
+  wrap.innerHTML="";
+  const r=supGroups();
+  supOrder(r.g).forEach(s=>{
+    const x=r.g[s];
+    wrap.appendChild(el("div","sup-sum",`<b>👷 ${s}</b> <span style="color:var(--ink-faint);font-size:11px">· ${x.plant.length} machine${x.plant.length>1?"s":""}</span>
+      <div class="z">${x.areas.join(", ")}</div>
+      <div class="pl">${x.plant.map(p=>p.plant).join(", ")}</div>`));
+  });
+  if(r.none.length){
+    wrap.appendChild(el("div","hint",`<span style="color:var(--caution)">No supervisor yet:</span> `+r.none.map(p=>p.plant).join(", ")));
+  }
+}
+function renderSupMgr(){
+  const list=document.getElementById("supMgrList"); if(!list) return;
+  list.innerHTML="";
+  supNames().forEach(nm=>{
+    const row=el("div","sup-row");
+    const areas=Object.keys(state.areaSup||{}).filter(k=>state.areaSup[k]===nm);
+    row.appendChild(el("div","sl",`<b>${nm}</b><span>${areas.length? areas.join(", ") : "no areas set"}</span>`));
+    const del=el("button","mini","Remove");
+    del.addEventListener("click",()=>{
+      if(!confirm("Remove "+nm+"? Any areas and machines they're looking after will need a new supervisor.")) return;
+      state.supervisors=state.supervisors.filter(x=>x!==nm);
+      Object.keys(state.areaSup).forEach(k=>{ if(state.areaSup[k]===nm) delete state.areaSup[k]; });
+      state.plant.forEach(p=>{ if(p.sup===nm) p.sup=""; });
+      save(); renderSupMgr(); renderFleet();
+    });
+    row.appendChild(del);
+    list.appendChild(row);
+  });
+}
+function addSupervisor(){
+  const inp=document.getElementById("supMgrName");
+  const nm=(inp.value||"").trim();
+  if(!nm){ toast("Type a name first"); return; }
+  if(supNames().map(x=>x.toLowerCase()).indexOf(nm.toLowerCase())>=0){ toast(nm+" is already listed"); return; }
+  state.supervisors.push(nm); inp.value="";
+  save(); renderSupMgr(); toast(nm+" added");
+}
+
 /* ============ RENDER: FLEET ============ */
 let typeFilter="ALL";
 function renderFleet(){
@@ -621,7 +778,7 @@ function cardFor(p){
   const who=el("div","who");
   const opName = p.operator? p.operator : "No operator";
   who.innerHTML=`<div class="op${p.operator?'':' none'}">${opName}</div>
-    <div class="meta"><span class="loc-tag">📍 ${p.loc||"—"}</span>${p.task?`<span>${p.task.length>28?p.task.slice(0,28)+"…":p.task}</span>`:`<span style="color:var(--caution)">no task set</span>`}</div>`;
+    <div class="meta"><span class="loc-tag">📍 ${p.loc||"—"}</span>${supFor(p)?`<span class="sup-tag">👷 ${supFor(p)}${p.sup?" *":""}</span>`:(p.status!=="dayoff"?`<span class="sup-tag none">👷 no supervisor</span>`:"")}${p.task?`<span>${p.task.length>28?p.task.slice(0,28)+"…":p.task}</span>`:`<span style="color:var(--caution)">no task set</span>`}</div>`;
   const badges=el("div","badges");
   // status pill
   const stMap={working:["go","Working"],down:["stop","Down"],standby:["caution","Standby"],dayoff:["off","Day Off"]};
@@ -663,9 +820,24 @@ function cardFor(p){
   const sel=el("select");
   locList().forEach(L=>{ const o=el("option",null,L); o.value=L; if(L===p.loc)o.selected=true; sel.appendChild(o); });
   if(!LOCATIONS.includes(p.loc) && p.loc){ const o=el("option",null,p.loc); o.value=p.loc; o.selected=true; sel.insertBefore(o,sel.firstChild); }
-  sel.addEventListener("change",()=>{ p.loc=sel.value; save(); renderFleet(); });
+  sel.addEventListener("change",()=>{ p.loc=sel.value; p.sup=""; save(); renderFleet(); });
   locField.appendChild(sel);
   body.appendChild(locField);
+
+  // supervisor: follows the area by default, can be overridden for this machine
+  const supField=el("div","field");
+  const areaS=areaSupFor(p.loc);
+  supField.innerHTML=`<label>Report to (supervisor)${p.sup?' <span style="color:var(--caution)">· just this machine</span>':''}</label>`;
+  supField.appendChild(supSelect(p.sup||"", areaS? "Area supervisor — "+areaS : "Area supervisor — not set", v=>{
+    p.sup = (v===areaS)? "" : v; save(); renderFleet();
+  }));
+  if(!areaS && p.loc){
+    const hb=el("button","mini","Set supervisor for all of "+p.loc);
+    hb.style.cssText="margin-top:8px;align-self:flex-start;color:var(--hi)";
+    hb.addEventListener("click",()=>{ show("message"); setTimeout(()=>{ const w=document.getElementById("supAreas"); if(w)w.scrollIntoView({behavior:"smooth",block:"start"}); },60); });
+    supField.appendChild(hb);
+  }
+  body.appendChild(supField);
 
   const taskField=el("div","field");
   taskField.innerHTML=`<label>Activity / task</label>`;
@@ -852,6 +1024,8 @@ function buildMessage(){
   lines.push(`*PLANT ALLOCATION — ${fmtDate().toUpperCase()}*`);
   lines.push(`Shift start ${state.shift}${state.group!=="Weekday"?" · "+state.group:""}`);
   lines.push("");
+  lines.push("_If you have any issues throughout the day, please contact the supervisor looking after your work area — see *WHO TO REPORT TO* below._");
+  lines.push("");
   CATS.forEach(cat=>{
     const rows=state.plant.filter(p=>p.cat===cat && p.status!=="down" && p.status!=="dayoff" && weekendOK(p));
     if(!rows.length) return;
@@ -866,6 +1040,17 @@ function buildMessage(){
   if(down.length){
     lines.push("*⚠ OFF / BROKEN DOWN*");
     down.forEach(p=>lines.push(`• ${p.plant} (${p.operator||"—"}) — down${p.downtime.down?" since "+p.downtime.down:""}`));
+    lines.push("");
+  }
+  const sg=supGroups();
+  const sOrder=supOrder(sg.g);
+  if(sOrder.length){
+    lines.push("*👷 SUPERVISORS — WHO TO REPORT TO*");
+    sOrder.forEach(s=>{
+      const x=sg.g[s];
+      lines.push(`*${s}* — ${x.areas.join(", ")}`);
+      lines.push(x.plant.map(p=>p.plant).join(", "));
+    });
     lines.push("");
   }
   lines.push(`Total working: ${state.plant.filter(p=>p.status==="working").length}`);
@@ -893,7 +1078,7 @@ function renderReportBuild(){
   active.forEach(p=>{ {var _k=p.loc||"Unassigned"; if(!byLoc[_k])byLoc[_k]=[]; byLoc[_k].push(p);} });
   Object.keys(byLoc).sort().forEach(loc=>{
     const card=el("div","rep-card");
-    card.innerHTML=`<div class="rh"><span class="z">📍 ${loc}</span></div>`;
+    card.innerHTML=`<div class="rh"><span class="z">📍 ${loc}</span>${areaSupFor(loc)?`<span class="sup-tag">👷 ${areaSupFor(loc)}</span>`:""}</div>`;
     byLoc[loc].forEach(p=>{
       const line=el("div"); line.style.cssText="font-size:13px;padding:6px 0;border-top:1px solid var(--line)";
       let txt=`<b style="font-family:var(--mono)">${p.plant}</b> — ${p.task||"(no task)"}`;
@@ -913,9 +1098,9 @@ function buildReport(){
   const active=state.plant.filter(p=>p.status!=="dayoff" && (p.task||p.status==="down"));
   const byLoc={}; active.forEach(p=>{ {var _k=p.loc||"Unassigned"; if(!byLoc[_k])byLoc[_k]=[]; byLoc[_k].push(p);} });
   Object.keys(byLoc).sort().forEach(loc=>{
-    L.push(""); L.push(`【 ${loc} 】`);
+    L.push(""); L.push(`【 ${loc} 】${areaSupFor(loc)?" · Supervisor: "+areaSupFor(loc):""}`);
     byLoc[loc].forEach(p=>{
-      L.push(`  ${p.plant} (${p.operator||"—"})`);
+      L.push(`  ${p.plant} (${p.operator||"—"})${p.sup?" · reports to "+p.sup:""}`);
       L.push(`    Task: ${p.task||"—"}`);
       if(p.status==="down"){
         const dt=p.downtime;
@@ -1200,7 +1385,7 @@ async function generateLocationXlsx(){
     toast("Building spreadsheet…");
     const STAT={working:"Working",down:"Down",standby:"Standby",dayoff:"Day Off"};
     // build rows grouped by type
-    const header=["Plant Type","Plant No.","Operator","Location","Status","Downtime (mins)","Breakdown notes"];
+    const header=["Plant Type","Plant No.","Operator","Location","Supervisor","Status","Downtime (mins)","Breakdown notes"];
     const rows=[]; // each row = array of cells (strings)
     CATS.forEach(cat=>{
       const machines=state.plant.filter(p=>p.cat===cat);
@@ -1212,7 +1397,7 @@ async function generateLocationXlsx(){
         else if(d.down) dt="ongoing from "+d.down;
         let notes="";
         if(p.status==="down"){ notes="Down"+(d.down?" @"+d.down:"")+(d.fitter?", fitter "+d.fitter:"")+(d.up?", up "+d.up:""); }
-        rows.push({cells:[ TYPE_TAG(p.type), p.plant, p.operator||"—", p.loc||"—", STAT[p.status]||p.status, dt, notes ]});
+        rows.push({cells:[ TYPE_TAG(p.type), p.plant, p.operator||"—", p.loc||"—", supFor(p)||"—", STAT[p.status]||p.status, dt, notes ]});
       });
     });
 
@@ -1235,7 +1420,7 @@ async function generateLocationXlsx(){
     });
 
     const sheetXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="16" customWidth="1"/><col min="2" max="2" width="16" customWidth="1"/><col min="3" max="3" width="24" customWidth="1"/><col min="4" max="4" width="18" customWidth="1"/><col min="5" max="5" width="12" customWidth="1"/><col min="6" max="6" width="16" customWidth="1"/><col min="7" max="7" width="30" customWidth="1"/></cols><sheetData>${sheetRows}</sheetData></worksheet>`;
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="16" customWidth="1"/><col min="2" max="2" width="16" customWidth="1"/><col min="3" max="3" width="24" customWidth="1"/><col min="4" max="4" width="18" customWidth="1"/><col min="5" max="5" width="14" customWidth="1"/><col min="6" max="6" width="12" customWidth="1"/><col min="7" max="7" width="16" customWidth="1"/><col min="8" max="8" width="30" customWidth="1"/></cols><sheetData>${sheetRows}</sheetData></worksheet>`;
 
     const stylesXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F3864"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD6E0F0"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="2" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs></styleSheet>`;
@@ -1316,9 +1501,9 @@ function show(view){
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("on"));
   document.getElementById("v-"+view).classList.add("on");
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.v===view));
-  if(view==="message"){ renderMessage(); renderBreaks(); }
+  if(view==="message"){ renderMessage(); renderSupAreas(); renderBreaks(); }
   if(view==="report")renderReportBuild();
-  if(view==="setup"){ renderOpMgr(); renderLocMgr(); }
+  if(view==="setup"){ renderOpMgr(); renderLocMgr(); renderSupMgr(); }
   if(view==="safety") renderTour();
   window.scrollTo(0,0);
 }
@@ -1335,7 +1520,7 @@ document.getElementById("planSeg").addEventListener("click",e=>{
   document.querySelectorAll("#planSeg button").forEach(x=>x.classList.toggle("on",x===b));
   updateDatePill();
   save(); renderFleet();
-  if(document.getElementById("v-message").classList.contains("on")){ renderMessage(); }
+  if(document.getElementById("v-message").classList.contains("on")){ renderMessage(); renderSupAreas(); }
   if(document.getElementById("v-report").classList.contains("on")){ renderReportBuild(); }
   toast(off===1?"Planning tomorrow":"Back to today");
 });
@@ -1359,6 +1544,8 @@ document.getElementById("tourAddAct").addEventListener("click",tourAddAction);
 document.getElementById("tourGen").addEventListener("click",generateTourDoc);
 document.getElementById("genLocXlsx").addEventListener("click",generateLocationXlsx);
 document.getElementById("addBreakBtn").addEventListener("click",addBreakWindow);
+document.getElementById("supMgrAdd").addEventListener("click",addSupervisor);
+document.getElementById("supMgrName").addEventListener("keydown",e=>{ if(e.key==="Enter")addSupervisor(); });
 document.getElementById("genReport").addEventListener("click",()=>{
   const out=buildReport();
   document.getElementById("reportOut").textContent=out;
